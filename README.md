@@ -111,4 +111,3 @@ Gebaut von Jonas Hallmann. Weitere Projekte:
 
 * [BiteLite](https://bitelite.app/): Ernährungstagebuch ohne Kalorienzählen
 * [PocketPodium](https://pocketpodium.app/): Reden üben, Füllwörter und Tempo messen
-* [Ohne Taschen](https://ohnetaschen.de/): wohin mit Schlüssel, Geld und Handy, wenn die Kleidung keine Taschen hat
