@@ -9,7 +9,7 @@ Open Source unter MIT-Lizenz. **Es gibt keinen Support.** Benutzung auf eigene V
 
 ## Benutzen
 
-1. `v1/index.html` im Browser öffnen (von Platte oder von einer Adresse, auf der jemand die Seite abgelegt hat).
+1. https://board.hallmann.top/v1/ öffnen, oder `v1/index.html` von der eigenen Platte bzw. einem eigenen Webspace.
 2. **Eigene Datei öffnen** oder **Neue Datei anlegen**. Beim Anlegen fragt die Einrichtung nach Titel, Namen, Projekten und dem Prompt für eine KI. Das alles steht danach im Kopf der Datei.
 3. Wer bist Du? Den eigenen Namen wählen, damit „Meine“ und „Fragen an mich“ stimmen. Das merkt sich nur dieser Browser.
 
@@ -103,4 +103,12 @@ Quellen: `src/format.js` (Lesen/Schreiben des Formats), `src/board.js` (Oberflä
 
 ## Lizenz
 
-MIT, siehe `LICENSE`.
+MIT, siehe `LICENSE`. Copyright (c) 2026 Jonas Hallmann.
+
+## Von mir
+
+Gebaut von Jonas Hallmann. Weitere Projekte:
+
+* [BiteLite](https://bitelite.app/): Ernährungstagebuch ohne Kalorienzählen
+* [PocketPodium](https://pocketpodium.app/): Reden üben, Füllwörter und Tempo messen
+* [Ohne Taschen](https://ohnetaschen.de/): wohin mit Schlüssel, Geld und Handy, wenn die Kleidung keine Taschen hat
