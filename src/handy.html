@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="@@CSP@@">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Handy anbinden · Board-Maske @@VERSION@@</title>
+<style>@@CSS@@</style>
+</head>
+<body>
+<main>
+<section class="start doku">
+  <h1>Handy anbinden <span class="ver">Board-Maske @@VERSION@@</span></h1>
+  <p class="lead">Deine Board-Datei bleibt auf Deinem PC. Das Handy greift über Dein eigenes, verschlüsseltes Netz (VPN) darauf zu.
+    Kein Cloud-Speicher, kein Konto bei uns, keine offene Tür ins Internet.</p>
+
+  <h2>So funktioniert es</h2>
+  <ol>
+    <li>Auf dem PC läuft ein kleiner Dienst: <code>board_lokal.py</code> (liegt im Download dieser Version, nur Python-Standardbibliothek, gut 200 Zeilen zum Selbstlesen).
+      Er zeigt die Board-Maske an und liest und schreibt genau eine Datei: Deine Board-Datei.</li>
+    <li>PC und Handy hängen im selben VPN, zum Beispiel <b>Tailscale</b> (einfach, kostenlos für Privatleute) oder <b>WireGuard</b> (ganz ohne fremden Dienst, etwas mehr Einrichtung).</li>
+    <li>Auf dem Handy öffnest Du <code>http://&lt;VPN-Adresse des PCs&gt;:8790/</code> und legst die Seite auf den Startbildschirm.</li>
+  </ol>
+  <p>Der Dienst nimmt nur Anfragen aus dem eigenen Rechner und aus dem VPN an. Ins Internet wird nichts freigegeben.</p>
+
+  <h2>Einrichten lassen: Prompt für Deine KI</h2>
+  <p>Wenn Du einen KI-Assistenten mit Zugriff auf Deinen PC nutzt (z. B. einen Coding-Assistenten im Terminal), gib ihm diesen Text.
+    Die zwei Pfade in eckigen Klammern trägst Du vorher ein.</p>
+  <pre class="prompt" id="prompt">Richte mir bitte den Handy-Zugriff auf meine Board-Datei ein. Die Datei bleibt auf diesem PC, das Handy greift nur über mein eigenes VPN darauf zu.
+
+Gegeben:
+- Board-Datei: [PFAD ZUR BOARD-DATEI, z. B. C:\Users\ich\Dokumente\board.md]
+- Ordner der Board-Maske (entpackter Download, darin index.html und board_lokal.py): [PFAD ZUM ORDNER]
+
+Schritte:
+1. Lies board_lokal.py vollständig und sag mir in drei Sätzen, was es tut, bevor Du es startest. Es darf nur die Standardbibliothek von Python 3 benutzen.
+2. Prüfe, ob Python 3.9 oder neuer installiert ist; wenn nicht, sag mir, wie ich es installiere.
+3. VPN: Prüfe, ob Tailscale auf dem PC läuft (tailscale ip -4). Wenn nicht, führe mich durch die Installation auf PC und Handy; die Anmeldung mache ich selbst.
+   Will ich keinen fremden Koordinationsdienst, richte stattdessen WireGuard ein (PC als Endpunkt, Handy als Peer, eigenes Netz wie 10.77.0.0/24) und gib mir die Handy-Konfiguration als QR-Code.
+4. Starte den Dienst testweise:
+   python board_lokal.py --datei "[PFAD ZUR BOARD-DATEI]" --host &lt;VPN-IP des PCs&gt; --port 8790
+   Bei WireGuard zusätzlich: --erlaube 10.77.0.0/24 (das WireGuard-Netz).
+5. Teste mit curl von diesem PC: http://&lt;VPN-IP&gt;:8790/ muss die Seite liefern, /board.md den Inhalt der Datei.
+6. Firewall: Port 8790 nur für das VPN-Netz freigeben (Tailscale 100.64.0.0/10, sonst das WireGuard-Netz), nie für alle.
+7. Autostart beim Anmelden einrichten (Windows: Aufgabenplanung, macOS: launchd, Linux: systemd --user), ohne sichtbares Fenster.
+8. Gib mir am Ende die Adresse fürs Handy und sag mir, wie ich sie auf den Startbildschirm lege.
+
+Regeln:
+- Keine Portfreigabe im Router, kein öffentlicher Tunnel (kein ngrok, kein Cloudflare Tunnel, kein Tailscale Funnel), kein Cloud-Speicher.
+- board_lokal.py und index.html nicht verändern. Die Board-Datei nur lesen, nicht umschreiben.
+- Melde mir jeden Schritt, der etwas installiert oder eine Firewall-Regel anlegt, bevor Du ihn ausführst.</pre>
+  <div class="knoepfe"><button type="button" class="speichern" id="kopieren">Prompt kopieren</button></div>
+
+  <h2>Von Hand starten</h2>
+  <pre class="prompt">python board_lokal.py --datei "C:\Pfad\zu\board.md" --host 100.x.y.z --port 8790</pre>
+  <p><code>100.x.y.z</code> ist die Tailscale-Adresse des PCs (<code>tailscale ip -4</code>). Nur am PC selbst reicht der Standard
+    <code>--host 127.0.0.1</code>, dann öffnest Du <code>http://127.0.0.1:8790/</code>.</p>
+
+  <h2>Ohne VPN</h2>
+  <p>Geht auch, aber umständlicher: Datei mit einem Sync-Programm, das ohne Cloud auskommt (z. B. Syncthing), aufs Handy spiegeln.
+    Handy-Browser können Dateien meist nicht direkt zurückschreiben; die Maske arbeitet dann mit einer Kopie im Browser,
+    die Du über „Herunterladen“ oder „Teilen“ zurück in den Sync-Ordner legst. Für den Alltag ist der VPN-Weg besser.</p>
+
+  <h2>Was der Dienst darf und was nicht</h2>
+  <ul>
+    <li>Er liest und schreibt nur die eine Datei, die Du beim Start angibst. Geschrieben wird über eine Zwischendatei, damit nie eine halbe Datei entsteht.</li>
+    <li>Er beantwortet nur Anfragen vom eigenen Rechner und aus dem VPN-Netz. Alles andere bekommt „403“.</li>
+    <li>Hat jemand anderes die Datei inzwischen geändert (Du am PC, Deine KI), lehnt er das Überschreiben ab; die Maske liest dann neu und wendet Deine Änderung erneut an.</li>
+    <li>Er lädt nichts nach, schickt nichts weg und schreibt kein Protokoll mit Inhalten.</li>
+  </ul>
+  <p><a href="index.html">Zur Board-Maske</a> · Version @@VERSION@@, Lizenz MIT, kein Support. Fehler gern selbst beheben: der ganze Code liegt offen.</p>
+</section>
+</main>
+<script>@@JS@@</script>
+</body>
+</html>

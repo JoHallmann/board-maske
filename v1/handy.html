@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1ySeWHxws5QLj51d0u5f4wPh3aDJloHvfUIpoiIlvJk='; style-src 'sha256-drLavWhGcNlc98JqChtZd/UUlLefJst8i8Hd7tKpQOA='; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Handy anbinden · Board-Maske v1</title>
+<style>:root { color-scheme: light dark;
+  --bg:#f6f5f1; --karte:#ffffff; --text:#1d1d1b; --leise:#63625d; --rand:#dcdad3;
+  --akzent:#1f5fad; --rot:#b3261e; --gruen:#1e7d4f; --gelb:#8a6100; --chip:#ecebe6; --flaeche:#ecebe5; --feld:#f1efe9; --aufakzent:#fff; }
+@media (prefers-color-scheme: dark) { :root {
+  --bg:#161615; --karte:#22221f; --text:#ecebe6; --leise:#a3a29b; --rand:#3a3935;
+  --akzent:#7fb0f0; --rot:#f28b82; --gruen:#5fbf8b; --gelb:#e0b341; --chip:#2d2d29; --flaeche:#1e1e1c; --feld:#161615; --aufakzent:#161615; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { max-width: 100%; overflow-x: clip; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, "Segoe UI", Roboto, Arial, sans-serif; }
+body.still { overflow: hidden; }
+button { font: inherit; }
+a { color: var(--akzent); }
+code { background: var(--feld); border-radius: 4px; padding: 0 4px; font-size: .92em; overflow-wrap: anywhere; }
+
+/* Kopf */
+header { position: sticky; top: 0; background: var(--bg); padding: 10px 12px 8px; border-bottom: 1px solid var(--rand); z-index: 5; }
+.kopf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kopf h1 { font-size: 19px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+.neu { margin-left: auto; font-size: 15px; font-weight: 600; border: 0; border-radius: 10px; background: var(--akzent);
+  color: var(--aufakzent); padding: 8px 14px; cursor: pointer; min-height: 40px; }
+.mbtn { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 10px; width: 42px; min-height: 40px;
+  font-size: 18px; cursor: pointer; }
+.sbtn { border: 1px solid var(--rand); background: var(--karte); color: var(--leise); border-radius: 999px; padding: 5px 10px;
+  font-size: 12.5px; cursor: pointer; white-space: nowrap; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; }
+.sbtn.ok::before { content: "● "; color: var(--gruen); }
+.sbtn.warn { border-color: var(--gelb); color: var(--gelb); font-weight: 600; }
+.sbtn.warn::before { content: "● "; }
+.sbtn.fehler { border-color: var(--rot); color: var(--rot); font-weight: 600; }
+.suche { width: 100%; order: 9; font: inherit; font-size: 16px; padding: 7px 11px; border: 1px solid var(--rand);
+  border-radius: 10px; background: var(--karte); color: var(--text); }
+.suche:focus { outline: 2px solid var(--akzent); outline-offset: -1px; }
+.suche::placeholder { font-size: 14px; }
+.leiste { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; scrollbar-width: none; }
+.leiste::-webkit-scrollbar { display: none; }
+.chip { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 999px; padding: 6px 11px;
+  font-size: 13px; white-space: nowrap; cursor: pointer; }
+.chip.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); }
+.chip.trenn { margin-right: 8px; }
+.chip.frage:not(.an) { border-color: var(--gelb); color: var(--gelb); font-weight: 600; }
+.chip.ich { color: var(--leise); }
+.pleiste { padding-top: 6px; }
+.chip.pchip { color: var(--pft); border-color: color-mix(in srgb, var(--pf) 40%, var(--rand)); font-weight: 600; }
+.chip.pchip.an { background: var(--pf); border-color: var(--pf); color: #fff; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 8px; }
+.tab { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 10px; padding: 6px 1px;
+  font-size: 12px; cursor: pointer; line-height: 1.2; min-height: 44px; }
+.tab b { display: block; font-size: 15px; }
+.tab.an { border-color: var(--akzent); box-shadow: inset 0 -3px 0 var(--akzent); }
+.aufwand { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 8px; }
+.aufwand-titel { display: none; }
+.afw { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 10px; min-height: 40px;
+  padding: 3px 1px; font-size: 12px; line-height: 1.2; cursor: pointer; }
+.afw b { display: block; font-size: 13px; }
+.afw.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); }
+
+/* Projektfarben: --pf Fläche, --pft Schrift (Kontrast mind. 4,5:1) */
+.pc0 { --pf:#1f5fad; --pft:#1f5fad; } .pc1 { --pf:#2e7d4f; --pft:#2e7d4f; } .pc2 { --pf:#8f5200; --pft:#8f5200; }
+.pc3 { --pf:#6a4fb3; --pft:#6a4fb3; } .pc4 { --pf:#b0306a; --pft:#b0306a; } .pc5 { --pf:#0f7c8c; --pft:#0f7c8c; }
+.pc6 { --pf:#b5121b; --pft:#b5121b; } .pc7 { --pf:#8a5a2b; --pft:#8a5a2b; } .pc8 { --pf:#3f5560; --pft:#3f5560; }
+.pc9 { --pf:#c4501b; --pft:#b04716; } .pc10 { --pf:#90700c; --pft:#7d610a; } .pc11 { --pf:#6a6a65; --pft:#5f5f5a; }
+@media (prefers-color-scheme: dark) {
+  .pc0 { --pft:#639de3; } .pc1 { --pft:#40ad6e; } .pc2 { --pft:#e18100; } .pc3 { --pft:#a08fcf; } .pc4 { --pft:#db7aa6; }
+  .pc5 { --pft:#4fb8c6; } .pc6 { --pft:#f16f76; } .pc7 { --pft:#c98d52; } .pc8 { --pft:#819ead; } .pc9 { --pft:#e67b4a; }
+  .pc10 { --pft:#bd940f; } .pc11 { --pft:#989893; } }
+
+/* Inhalt */
+main { padding: 12px 12px 90px; }
+.spalten { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.spalte h2 { display: none; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; margin: 0 0 8px; color: var(--leise); font-weight: 700; }
+.rail { display: contents; }
+.klappkopf { display: none; }
+.leer { color: var(--leise); font-size: 13px; padding: 8px 2px; }
+.mehr { display: block; margin: 8px auto; border: 1px solid var(--rand); background: var(--karte); color: var(--text);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+@media (min-width: 900px) {
+  .kopf { flex-wrap: nowrap; }
+  .kopf h1 { max-width: 30vw; }
+  .neu { margin-left: 0; }
+  .suche { order: 0; width: 300px; max-width: 30vw; margin-left: auto; font-size: 13.5px; padding: 6px 10px; }
+  .leiste { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
+  .leiste .chip { font-size: 12.5px; padding: 4px 9px; }
+  .aufwand { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
+  .aufwand-titel { display: inline; font-size: 12px; color: var(--leise); margin-right: 3px; }
+  .afw { min-height: 0; border-radius: 999px; padding: 3px 9px; font-size: 12.5px; }
+  .afw b { display: inline; font-size: inherit; font-weight: 400; margin-left: 3px; }
+  .karte .ktext { font-size: 13.5px; line-height: 1.35; }
+  .karte .meta { font-size: 11.5px; }
+  .spalten { grid-template-columns: minmax(0, 1fr) clamp(200px, 18vw, 280px) clamp(160px, 14vw, 240px); gap: 12px; align-items: start; }
+  .tabs { display: none; }
+  .spalte { display: block !important; }
+  .spalte h2 { display: block; }
+  .s-offen .liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0 10px; }
+  .s-wartet { background: var(--flaeche); border: 1px solid var(--rand); border-radius: 12px; padding: 9px 9px 2px; }
+  .rail { display: flex; flex-direction: column; min-width: 0; background: var(--flaeche); border: 1px solid var(--rand); border-radius: 12px; padding: 5px 9px; }
+  .klappkopf { display: flex; width: 100%; align-items: baseline; gap: 6px; border: 0; background: none; color: var(--leise);
+    padding: 6px 0; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; }
+  .klappkopf:hover { color: var(--text); }
+  .klappkopf .pfeil { display: inline-block; font-size: 10px; transition: transform .12s; }
+  .klapp.offen .klappkopf .pfeil { transform: rotate(90deg); }
+  .klapp:not(.offen) .klappinhalt { display: none; }
+  .klapp .spalte h2 { display: none; }
+}
+
+/* Karten */
+.karte { background: var(--karte); border: 1px solid var(--rand); border-radius: 12px; padding: 8px 10px 7px; margin-bottom: 7px; cursor: pointer; }
+.karte:focus-visible { outline: 2px solid var(--akzent); }
+.karte.spaeter { opacity: .55; }
+.karte.zu { opacity: .72; }
+.karte.zu .ktext::before { content: "✓ "; color: var(--gruen); font-weight: 700; }
+.karte.verworfen .ktext { text-decoration: line-through; color: var(--leise); }
+.karte.verworfen .ktext::before { content: ""; }
+.kreihe { display: flex; gap: 6px; align-items: flex-start; }
+.kinhalt { flex: 1 1 auto; min-width: 0; }
+.ktext { font-size: 15px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.stern { flex: none; border: 0; background: none; color: var(--leise); font-size: 19px; line-height: 1; padding: 0 2px; cursor: pointer; }
+.stern.an { color: #c98a00; }
+.haken { flex: none; width: 30px; height: 30px; border: 1.5px solid var(--gruen); border-radius: 50%; background: none; color: var(--gruen);
+  font-size: 15px; line-height: 1; padding: 0; cursor: pointer; }
+.haken:hover, .haken:active { background: var(--gruen); color: #fff; }
+@media (max-width: 899px) { .haken { width: 38px; height: 38px; font-size: 17px; } .stern { font-size: 22px; padding: 6px; margin: -6px 0 0 -6px; } }
+.meta { display: flex; flex-wrap: wrap; gap: 5px 8px; margin-top: 4px; font-size: 12px; color: var(--leise); align-items: center; overflow-wrap: anywhere; }
+.proj { border-radius: 6px; padding: 1px 7px; font-weight: 600; color: #fff; font-size: 11.5px; background: var(--pf, #6a6a65); }
+.tag { border: 1px solid var(--rand); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+.tag.aufw { color: var(--akzent); border-color: var(--akzent); }
+.tag.allein { color: var(--gruen); border-color: var(--gruen); }
+.tag.fragetag { color: var(--gelb); border-color: var(--gelb); font-weight: 600; }
+.frist.knapp { color: var(--rot); font-weight: 700; }
+.kid { font: 11px/1 ui-monospace, Consolas, monospace; color: var(--leise); }
+
+/* Ebenen (Popup, am Handy Vollbild) */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 20; overscroll-behavior: contain; }
+.panel { background: var(--karte); color: var(--text); width: 100%; max-width: 760px; max-height: 90dvh; overflow: auto; border-radius: 16px; padding: 0 16px 18px; overscroll-behavior: contain; }
+.panel.schmal { max-width: 560px; }
+@media (max-width: 599px) { .overlay { align-items: stretch; } .panel { max-width: none; max-height: none; height: 100%; border-radius: 0; padding: 0 14px 28px; } }
+.pkopf { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; background: var(--karte); padding: 12px 0 8px; z-index: 1; }
+.pkopf .pstatus { font-size: 12.5px; color: var(--leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pkopf h3 { margin: 0; font-size: 17px; }
+.zu-btn { margin-left: auto; flex: none; border: 0; background: var(--chip); color: var(--text); width: 40px; height: 40px; border-radius: 50%; font-size: 17px; cursor: pointer; }
+.dtext { font-size: 17px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; margin: 2px 0 6px; }
+.dlabel { font-size: 12.5px; color: var(--leise); margin: 14px 0 4px; }
+.dbeschr { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.45; margin: 0; }
+.dnotiz { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; background: var(--feld); border: 1px solid var(--rand); border-radius: 8px; padding: 7px 9px; }
+.dhaupt { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.dhaupt button, .knoepfe button { font-size: 15px; white-space: nowrap; border-radius: 10px; padding: 9px 16px; min-height: 44px;
+  border: 1px solid var(--rand); background: var(--chip); color: var(--text); cursor: pointer; }
+.dhaupt .erl { margin-left: auto; background: var(--karte); border-color: var(--gruen); color: var(--gruen); font-weight: 600; }
+.dhaupt .passt, .dhaupt .allesend { background: var(--gruen); border-color: var(--gruen); color: #fff; font-weight: 600; }
+.dklein { margin-top: 18px; border-top: 1px solid var(--rand); padding-top: 2px; }
+.mlabel { font-size: 12px; color: var(--leise); margin: 10px 0 4px; }
+.mreihe { display: flex; flex-wrap: wrap; gap: 5px; }
+.mreihe button { font-size: 13.5px; white-space: nowrap; border: 1px solid var(--rand); background: var(--chip); color: var(--text);
+  border-radius: 9px; padding: 6px 10px; min-height: 38px; cursor: pointer; }
+.mreihe button.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 600; }
+.mreihe button.weg { color: var(--rot); }
+.mreihe button.weg.sicher { background: var(--rot); border-color: var(--rot); color: #fff; font-weight: 600; }
+
+/* Frage an mich und Entscheidungsliste */
+.fdbox { margin-top: 14px; border-top: 1px solid var(--rand); padding-top: 10px; }
+.fdbox .frage { font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; }
+.fdbox .empf { margin-top: 4px; font-size: 13.5px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.fdbox textarea { width: 100%; margin-top: 8px; font: inherit; font-size: 16px; min-height: 54px; padding: 7px 9px; border: 1px solid var(--rand);
+  border-radius: 8px; background: var(--feld); color: var(--text); resize: vertical; }
+.fdnotiz { margin-top: 6px; font-size: 13.5px; color: var(--leise); overflow-wrap: anywhere; }
+.entliste { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ent { border: 1px solid var(--rand); border-left: 4px solid var(--rand); border-radius: 10px; padding: 8px 10px; }
+.ent.ok { border-left-color: var(--akzent); }
+.ent.ok.nein { border-left-color: var(--rot); }
+.enttext { font-size: 14.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.entk { font-weight: 700; margin-right: 4px; }
+.entempf { color: var(--leise); font-size: 13px; }
+.entopt { font-size: 14px; line-height: 1.35; margin: 3px 0 0 2px; overflow-wrap: anywhere; }
+.entopt b { display: inline-block; min-width: 1.2em; }
+.entkn { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
+.entkn button { font-size: 14px; min-height: 40px; min-width: 44px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--rand);
+  background: var(--chip); color: var(--text); cursor: pointer; max-width: 100%; white-space: normal; }
+.entkn button.empfk { border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
+.entkn button.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 700; }
+.entkn button.an.nein { background: var(--rot); border-color: var(--rot); color: #fff; }
+.entkn input { flex: 1 1 140px; min-width: 0; font: inherit; font-size: 16px; padding: 6px 9px; min-height: 40px; border: 1px solid var(--rand);
+  border-radius: 9px; background: var(--feld); color: var(--text); }
+.entfuss { margin-top: 4px; font-size: 13px; color: var(--leise); }
+
+/* Formulare */
+.panel label { display: block; font-size: 12.5px; color: var(--leise); margin: 10px 0 3px; }
+.panel input:not([type=checkbox]), .panel select, .panel textarea { width: 100%; font: inherit; font-size: 16px; padding: 8px 10px;
+  border: 1px solid var(--rand); border-radius: 10px; background: var(--bg); color: var(--text); }
+.panel textarea { min-height: 70px; resize: vertical; }
+.panel textarea.gross { min-height: 160px; font-size: 14px; }
+.panel label.haekchen { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin: 12px 0 2px; }
+.panel label.haekchen input { width: 20px; height: 20px; margin: 0; flex: none; }
+.zeile2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.knoepfe .speichern { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 600; }
+.hilfe { font-size: 13px; color: var(--leise); margin: 4px 0 0; }
+.fehltext { color: var(--rot); font-size: 13.5px; margin-top: 8px; }
+pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--feld); border: 1px solid var(--rand); border-radius: 8px; padding: 10px; font-size: 13px; max-height: 50vh; overflow: auto; }
+
+/* Menü */
+.menu { position: fixed; top: 56px; right: 10px; z-index: 25; background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 6px; min-width: 230px; max-width: calc(100vw - 20px); }
+.menu button, .menu a { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); padding: 11px 12px;
+  border-radius: 8px; font-size: 15px; cursor: pointer; text-decoration: none; }
+.menu button:hover, .menu a:hover { background: var(--chip); }
+.menu hr { border: 0; border-top: 1px solid var(--rand); margin: 4px 6px; }
+.menu .mtext { font-size: 12px; color: var(--leise); padding: 6px 12px; overflow-wrap: anywhere; }
+
+/* Startseite */
+.start { max-width: 640px; margin: 6vh auto 0; }
+.start h1 { font-size: 28px; margin: 0 0 8px; }
+.start .ver { font-size: 14px; color: var(--leise); font-weight: 400; }
+.lead { font-size: 17px; margin: 0 0 18px; }
+.startknoepfe { display: grid; gap: 10px; }
+.gross { font-size: 17px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rand); background: var(--karte); color: var(--text); cursor: pointer; min-height: 52px; }
+.gross.haupt { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 600; }
+.gross.leise { color: var(--leise); }
+.weiter { margin-top: 12px; }
+.weiter .gross { width: 100%; border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
+.info { margin-top: 26px; font-size: 14px; color: var(--leise); }
+.info h2 { font-size: 15px; color: var(--text); margin: 0 0 6px; }
+.info p { margin: 0 0 10px; }
+
+.hinweis { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 14px;
+  border-radius: 10px; font-size: 14px; z-index: 40; width: max-content; max-width: calc(100% - 24px); }
+.banner { background: var(--karte); border: 1px solid var(--gelb); border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; font-size: 13.5px;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.banner button { border: 1px solid var(--rand); background: var(--chip); color: var(--text); border-radius: 9px; padding: 6px 11px; cursor: pointer; min-height: 38px; }
+.lnk { overflow-wrap: anywhere; }
+.banner { grid-column: 1 / -1; margin-bottom: 0; }
+.spalte.aus { display: none; }
+.klapp, .klappinhalt { display: contents; }
+@media (min-width: 900px) { .klapp, .klappinhalt { display: block; } .klapp:not(.offen) .klappinhalt { display: none; } }
+.hinweis .mehr { display: inline-block; margin: 0 0 0 8px; padding: 3px 10px; background: var(--bg); color: var(--text); }
+.doku { max-width: 760px; margin-top: 3vh; }
+.doku h2 { font-size: 18px; margin: 26px 0 6px; }
+.doku p, .doku li { font-size: 15px; line-height: 1.5; }
+.doku li { margin-bottom: 6px; }
+.doku pre.prompt { max-height: none; }
+</style>
+</head>
+<body>
+<main>
+<section class="start doku">
+  <h1>Handy anbinden <span class="ver">Board-Maske v1</span></h1>
+  <p class="lead">Deine Board-Datei bleibt auf Deinem PC. Das Handy greift über Dein eigenes, verschlüsseltes Netz (VPN) darauf zu.
+    Kein Cloud-Speicher, kein Konto bei uns, keine offene Tür ins Internet.</p>
+
+  <h2>So funktioniert es</h2>
+  <ol>
+    <li>Auf dem PC läuft ein kleiner Dienst: <code>board_lokal.py</code> (liegt im Download dieser Version, nur Python-Standardbibliothek, gut 200 Zeilen zum Selbstlesen).
+      Er zeigt die Board-Maske an und liest und schreibt genau eine Datei: Deine Board-Datei.</li>
+    <li>PC und Handy hängen im selben VPN, zum Beispiel <b>Tailscale</b> (einfach, kostenlos für Privatleute) oder <b>WireGuard</b> (ganz ohne fremden Dienst, etwas mehr Einrichtung).</li>
+    <li>Auf dem Handy öffnest Du <code>http://&lt;VPN-Adresse des PCs&gt;:8790/</code> und legst die Seite auf den Startbildschirm.</li>
+  </ol>
+  <p>Der Dienst nimmt nur Anfragen aus dem eigenen Rechner und aus dem VPN an. Ins Internet wird nichts freigegeben.</p>
+
+  <h2>Einrichten lassen: Prompt für Deine KI</h2>
+  <p>Wenn Du einen KI-Assistenten mit Zugriff auf Deinen PC nutzt (z. B. einen Coding-Assistenten im Terminal), gib ihm diesen Text.
+    Die zwei Pfade in eckigen Klammern trägst Du vorher ein.</p>
+  <pre class="prompt" id="prompt">Richte mir bitte den Handy-Zugriff auf meine Board-Datei ein. Die Datei bleibt auf diesem PC, das Handy greift nur über mein eigenes VPN darauf zu.
+
+Gegeben:
+- Board-Datei: [PFAD ZUR BOARD-DATEI, z. B. C:\Users\ich\Dokumente\board.md]
+- Ordner der Board-Maske (entpackter Download, darin index.html und board_lokal.py): [PFAD ZUM ORDNER]
+
+Schritte:
+1. Lies board_lokal.py vollständig und sag mir in drei Sätzen, was es tut, bevor Du es startest. Es darf nur die Standardbibliothek von Python 3 benutzen.
+2. Prüfe, ob Python 3.9 oder neuer installiert ist; wenn nicht, sag mir, wie ich es installiere.
+3. VPN: Prüfe, ob Tailscale auf dem PC läuft (tailscale ip -4). Wenn nicht, führe mich durch die Installation auf PC und Handy; die Anmeldung mache ich selbst.
+   Will ich keinen fremden Koordinationsdienst, richte stattdessen WireGuard ein (PC als Endpunkt, Handy als Peer, eigenes Netz wie 10.77.0.0/24) und gib mir die Handy-Konfiguration als QR-Code.
+4. Starte den Dienst testweise:
+   python board_lokal.py --datei "[PFAD ZUR BOARD-DATEI]" --host &lt;VPN-IP des PCs&gt; --port 8790
+   Bei WireGuard zusätzlich: --erlaube 10.77.0.0/24 (das WireGuard-Netz).
+5. Teste mit curl von diesem PC: http://&lt;VPN-IP&gt;:8790/ muss die Seite liefern, /board.md den Inhalt der Datei.
+6. Firewall: Port 8790 nur für das VPN-Netz freigeben (Tailscale 100.64.0.0/10, sonst das WireGuard-Netz), nie für alle.
+7. Autostart beim Anmelden einrichten (Windows: Aufgabenplanung, macOS: launchd, Linux: systemd --user), ohne sichtbares Fenster.
+8. Gib mir am Ende die Adresse fürs Handy und sag mir, wie ich sie auf den Startbildschirm lege.
+
+Regeln:
+- Keine Portfreigabe im Router, kein öffentlicher Tunnel (kein ngrok, kein Cloudflare Tunnel, kein Tailscale Funnel), kein Cloud-Speicher.
+- board_lokal.py und index.html nicht verändern. Die Board-Datei nur lesen, nicht umschreiben.
+- Melde mir jeden Schritt, der etwas installiert oder eine Firewall-Regel anlegt, bevor Du ihn ausführst.</pre>
+  <div class="knoepfe"><button type="button" class="speichern" id="kopieren">Prompt kopieren</button></div>
+
+  <h2>Von Hand starten</h2>
+  <pre class="prompt">python board_lokal.py --datei "C:\Pfad\zu\board.md" --host 100.x.y.z --port 8790</pre>
+  <p><code>100.x.y.z</code> ist die Tailscale-Adresse des PCs (<code>tailscale ip -4</code>). Nur am PC selbst reicht der Standard
+    <code>--host 127.0.0.1</code>, dann öffnest Du <code>http://127.0.0.1:8790/</code>.</p>
+
+  <h2>Ohne VPN</h2>
+  <p>Geht auch, aber umständlicher: Datei mit einem Sync-Programm, das ohne Cloud auskommt (z. B. Syncthing), aufs Handy spiegeln.
+    Handy-Browser können Dateien meist nicht direkt zurückschreiben; die Maske arbeitet dann mit einer Kopie im Browser,
+    die Du über „Herunterladen“ oder „Teilen“ zurück in den Sync-Ordner legst. Für den Alltag ist der VPN-Weg besser.</p>
+
+  <h2>Was der Dienst darf und was nicht</h2>
+  <ul>
+    <li>Er liest und schreibt nur die eine Datei, die Du beim Start angibst. Geschrieben wird über eine Zwischendatei, damit nie eine halbe Datei entsteht.</li>
+    <li>Er beantwortet nur Anfragen vom eigenen Rechner und aus dem VPN-Netz. Alles andere bekommt „403“.</li>
+    <li>Hat jemand anderes die Datei inzwischen geändert (Du am PC, Deine KI), lehnt er das Überschreiben ab; die Maske liest dann neu und wendet Deine Änderung erneut an.</li>
+    <li>Er lädt nichts nach, schickt nichts weg und schreibt kein Protokoll mit Inhalten.</li>
+  </ul>
+  <p><a href="index.html">Zur Board-Maske</a> · Version v1, Lizenz MIT, kein Support. Fehler gern selbst beheben: der ganze Code liegt offen.</p>
+</section>
+</main>
+<script>"use strict";
+(() => {
+  const knopf = document.getElementById("kopieren"), pre = document.getElementById("prompt");
+  knopf.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(pre.textContent); knopf.textContent = "Kopiert"; }
+    catch (e) {
+      const r = document.createRange(); r.selectNodeContents(pre);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      knopf.textContent = "Markiert: jetzt Strg+C";
+    }
+    setTimeout(() => { knopf.textContent = "Prompt kopieren"; }, 2500);
+  });
+})();
+</script>
+</body>
+</html>

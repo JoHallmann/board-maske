@@ -1,0 +1,1649 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-QTxLFGGrc2qAt7cGh0rMmHPpzSbWl1gHOhcqpMkc6Xg='; style-src 'sha256-drLavWhGcNlc98JqChtZd/UUlLefJst8i8Hd7tKpQOA='; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1f5fad">
+<meta name="description" content="Board-Maske: Aufgaben-Board im Browser für Deine eigene Markdown-Datei. Ohne Konto, ohne Server, nichts verlässt Dein Gerät.">
+<title>Board-Maske v1</title>
+<style>:root { color-scheme: light dark;
+  --bg:#f6f5f1; --karte:#ffffff; --text:#1d1d1b; --leise:#63625d; --rand:#dcdad3;
+  --akzent:#1f5fad; --rot:#b3261e; --gruen:#1e7d4f; --gelb:#8a6100; --chip:#ecebe6; --flaeche:#ecebe5; --feld:#f1efe9; --aufakzent:#fff; }
+@media (prefers-color-scheme: dark) { :root {
+  --bg:#161615; --karte:#22221f; --text:#ecebe6; --leise:#a3a29b; --rand:#3a3935;
+  --akzent:#7fb0f0; --rot:#f28b82; --gruen:#5fbf8b; --gelb:#e0b341; --chip:#2d2d29; --flaeche:#1e1e1c; --feld:#161615; --aufakzent:#161615; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { max-width: 100%; overflow-x: clip; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, "Segoe UI", Roboto, Arial, sans-serif; }
+body.still { overflow: hidden; }
+button { font: inherit; }
+a { color: var(--akzent); }
+code { background: var(--feld); border-radius: 4px; padding: 0 4px; font-size: .92em; overflow-wrap: anywhere; }
+
+/* Kopf */
+header { position: sticky; top: 0; background: var(--bg); padding: 10px 12px 8px; border-bottom: 1px solid var(--rand); z-index: 5; }
+.kopf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kopf h1 { font-size: 19px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+.neu { margin-left: auto; font-size: 15px; font-weight: 600; border: 0; border-radius: 10px; background: var(--akzent);
+  color: var(--aufakzent); padding: 8px 14px; cursor: pointer; min-height: 40px; }
+.mbtn { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 10px; width: 42px; min-height: 40px;
+  font-size: 18px; cursor: pointer; }
+.sbtn { border: 1px solid var(--rand); background: var(--karte); color: var(--leise); border-radius: 999px; padding: 5px 10px;
+  font-size: 12.5px; cursor: pointer; white-space: nowrap; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; }
+.sbtn.ok::before { content: "● "; color: var(--gruen); }
+.sbtn.warn { border-color: var(--gelb); color: var(--gelb); font-weight: 600; }
+.sbtn.warn::before { content: "● "; }
+.sbtn.fehler { border-color: var(--rot); color: var(--rot); font-weight: 600; }
+.suche { width: 100%; order: 9; font: inherit; font-size: 16px; padding: 7px 11px; border: 1px solid var(--rand);
+  border-radius: 10px; background: var(--karte); color: var(--text); }
+.suche:focus { outline: 2px solid var(--akzent); outline-offset: -1px; }
+.suche::placeholder { font-size: 14px; }
+.leiste { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; scrollbar-width: none; }
+.leiste::-webkit-scrollbar { display: none; }
+.chip { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 999px; padding: 6px 11px;
+  font-size: 13px; white-space: nowrap; cursor: pointer; }
+.chip.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); }
+.chip.trenn { margin-right: 8px; }
+.chip.frage:not(.an) { border-color: var(--gelb); color: var(--gelb); font-weight: 600; }
+.chip.ich { color: var(--leise); }
+.pleiste { padding-top: 6px; }
+.chip.pchip { color: var(--pft); border-color: color-mix(in srgb, var(--pf) 40%, var(--rand)); font-weight: 600; }
+.chip.pchip.an { background: var(--pf); border-color: var(--pf); color: #fff; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 8px; }
+.tab { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 10px; padding: 6px 1px;
+  font-size: 12px; cursor: pointer; line-height: 1.2; min-height: 44px; }
+.tab b { display: block; font-size: 15px; }
+.tab.an { border-color: var(--akzent); box-shadow: inset 0 -3px 0 var(--akzent); }
+.aufwand { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 8px; }
+.aufwand-titel { display: none; }
+.afw { border: 1px solid var(--rand); background: var(--karte); color: var(--text); border-radius: 10px; min-height: 40px;
+  padding: 3px 1px; font-size: 12px; line-height: 1.2; cursor: pointer; }
+.afw b { display: block; font-size: 13px; }
+.afw.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); }
+
+/* Projektfarben: --pf Fläche, --pft Schrift (Kontrast mind. 4,5:1) */
+.pc0 { --pf:#1f5fad; --pft:#1f5fad; } .pc1 { --pf:#2e7d4f; --pft:#2e7d4f; } .pc2 { --pf:#8f5200; --pft:#8f5200; }
+.pc3 { --pf:#6a4fb3; --pft:#6a4fb3; } .pc4 { --pf:#b0306a; --pft:#b0306a; } .pc5 { --pf:#0f7c8c; --pft:#0f7c8c; }
+.pc6 { --pf:#b5121b; --pft:#b5121b; } .pc7 { --pf:#8a5a2b; --pft:#8a5a2b; } .pc8 { --pf:#3f5560; --pft:#3f5560; }
+.pc9 { --pf:#c4501b; --pft:#b04716; } .pc10 { --pf:#90700c; --pft:#7d610a; } .pc11 { --pf:#6a6a65; --pft:#5f5f5a; }
+@media (prefers-color-scheme: dark) {
+  .pc0 { --pft:#639de3; } .pc1 { --pft:#40ad6e; } .pc2 { --pft:#e18100; } .pc3 { --pft:#a08fcf; } .pc4 { --pft:#db7aa6; }
+  .pc5 { --pft:#4fb8c6; } .pc6 { --pft:#f16f76; } .pc7 { --pft:#c98d52; } .pc8 { --pft:#819ead; } .pc9 { --pft:#e67b4a; }
+  .pc10 { --pft:#bd940f; } .pc11 { --pft:#989893; } }
+
+/* Inhalt */
+main { padding: 12px 12px 90px; }
+.spalten { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.spalte h2 { display: none; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; margin: 0 0 8px; color: var(--leise); font-weight: 700; }
+.rail { display: contents; }
+.klappkopf { display: none; }
+.leer { color: var(--leise); font-size: 13px; padding: 8px 2px; }
+.mehr { display: block; margin: 8px auto; border: 1px solid var(--rand); background: var(--karte); color: var(--text);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+@media (min-width: 900px) {
+  .kopf { flex-wrap: nowrap; }
+  .kopf h1 { max-width: 30vw; }
+  .neu { margin-left: 0; }
+  .suche { order: 0; width: 300px; max-width: 30vw; margin-left: auto; font-size: 13.5px; padding: 6px 10px; }
+  .leiste { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
+  .leiste .chip { font-size: 12.5px; padding: 4px 9px; }
+  .aufwand { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
+  .aufwand-titel { display: inline; font-size: 12px; color: var(--leise); margin-right: 3px; }
+  .afw { min-height: 0; border-radius: 999px; padding: 3px 9px; font-size: 12.5px; }
+  .afw b { display: inline; font-size: inherit; font-weight: 400; margin-left: 3px; }
+  .karte .ktext { font-size: 13.5px; line-height: 1.35; }
+  .karte .meta { font-size: 11.5px; }
+  .spalten { grid-template-columns: minmax(0, 1fr) clamp(200px, 18vw, 280px) clamp(160px, 14vw, 240px); gap: 12px; align-items: start; }
+  .tabs { display: none; }
+  .spalte { display: block !important; }
+  .spalte h2 { display: block; }
+  .s-offen .liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0 10px; }
+  .s-wartet { background: var(--flaeche); border: 1px solid var(--rand); border-radius: 12px; padding: 9px 9px 2px; }
+  .rail { display: flex; flex-direction: column; min-width: 0; background: var(--flaeche); border: 1px solid var(--rand); border-radius: 12px; padding: 5px 9px; }
+  .klappkopf { display: flex; width: 100%; align-items: baseline; gap: 6px; border: 0; background: none; color: var(--leise);
+    padding: 6px 0; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; }
+  .klappkopf:hover { color: var(--text); }
+  .klappkopf .pfeil { display: inline-block; font-size: 10px; transition: transform .12s; }
+  .klapp.offen .klappkopf .pfeil { transform: rotate(90deg); }
+  .klapp:not(.offen) .klappinhalt { display: none; }
+  .klapp .spalte h2 { display: none; }
+}
+
+/* Karten */
+.karte { background: var(--karte); border: 1px solid var(--rand); border-radius: 12px; padding: 8px 10px 7px; margin-bottom: 7px; cursor: pointer; }
+.karte:focus-visible { outline: 2px solid var(--akzent); }
+.karte.spaeter { opacity: .55; }
+.karte.zu { opacity: .72; }
+.karte.zu .ktext::before { content: "✓ "; color: var(--gruen); font-weight: 700; }
+.karte.verworfen .ktext { text-decoration: line-through; color: var(--leise); }
+.karte.verworfen .ktext::before { content: ""; }
+.kreihe { display: flex; gap: 6px; align-items: flex-start; }
+.kinhalt { flex: 1 1 auto; min-width: 0; }
+.ktext { font-size: 15px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.stern { flex: none; border: 0; background: none; color: var(--leise); font-size: 19px; line-height: 1; padding: 0 2px; cursor: pointer; }
+.stern.an { color: #c98a00; }
+.haken { flex: none; width: 30px; height: 30px; border: 1.5px solid var(--gruen); border-radius: 50%; background: none; color: var(--gruen);
+  font-size: 15px; line-height: 1; padding: 0; cursor: pointer; }
+.haken:hover, .haken:active { background: var(--gruen); color: #fff; }
+@media (max-width: 899px) { .haken { width: 38px; height: 38px; font-size: 17px; } .stern { font-size: 22px; padding: 6px; margin: -6px 0 0 -6px; } }
+.meta { display: flex; flex-wrap: wrap; gap: 5px 8px; margin-top: 4px; font-size: 12px; color: var(--leise); align-items: center; overflow-wrap: anywhere; }
+.proj { border-radius: 6px; padding: 1px 7px; font-weight: 600; color: #fff; font-size: 11.5px; background: var(--pf, #6a6a65); }
+.tag { border: 1px solid var(--rand); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+.tag.aufw { color: var(--akzent); border-color: var(--akzent); }
+.tag.allein { color: var(--gruen); border-color: var(--gruen); }
+.tag.fragetag { color: var(--gelb); border-color: var(--gelb); font-weight: 600; }
+.frist.knapp { color: var(--rot); font-weight: 700; }
+.kid { font: 11px/1 ui-monospace, Consolas, monospace; color: var(--leise); }
+
+/* Ebenen (Popup, am Handy Vollbild) */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 20; overscroll-behavior: contain; }
+.panel { background: var(--karte); color: var(--text); width: 100%; max-width: 760px; max-height: 90dvh; overflow: auto; border-radius: 16px; padding: 0 16px 18px; overscroll-behavior: contain; }
+.panel.schmal { max-width: 560px; }
+@media (max-width: 599px) { .overlay { align-items: stretch; } .panel { max-width: none; max-height: none; height: 100%; border-radius: 0; padding: 0 14px 28px; } }
+.pkopf { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; background: var(--karte); padding: 12px 0 8px; z-index: 1; }
+.pkopf .pstatus { font-size: 12.5px; color: var(--leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pkopf h3 { margin: 0; font-size: 17px; }
+.zu-btn { margin-left: auto; flex: none; border: 0; background: var(--chip); color: var(--text); width: 40px; height: 40px; border-radius: 50%; font-size: 17px; cursor: pointer; }
+.dtext { font-size: 17px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; margin: 2px 0 6px; }
+.dlabel { font-size: 12.5px; color: var(--leise); margin: 14px 0 4px; }
+.dbeschr { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.45; margin: 0; }
+.dnotiz { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; background: var(--feld); border: 1px solid var(--rand); border-radius: 8px; padding: 7px 9px; }
+.dhaupt { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.dhaupt button, .knoepfe button { font-size: 15px; white-space: nowrap; border-radius: 10px; padding: 9px 16px; min-height: 44px;
+  border: 1px solid var(--rand); background: var(--chip); color: var(--text); cursor: pointer; }
+.dhaupt .erl { margin-left: auto; background: var(--karte); border-color: var(--gruen); color: var(--gruen); font-weight: 600; }
+.dhaupt .passt, .dhaupt .allesend { background: var(--gruen); border-color: var(--gruen); color: #fff; font-weight: 600; }
+.dklein { margin-top: 18px; border-top: 1px solid var(--rand); padding-top: 2px; }
+.mlabel { font-size: 12px; color: var(--leise); margin: 10px 0 4px; }
+.mreihe { display: flex; flex-wrap: wrap; gap: 5px; }
+.mreihe button { font-size: 13.5px; white-space: nowrap; border: 1px solid var(--rand); background: var(--chip); color: var(--text);
+  border-radius: 9px; padding: 6px 10px; min-height: 38px; cursor: pointer; }
+.mreihe button.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 600; }
+.mreihe button.weg { color: var(--rot); }
+.mreihe button.weg.sicher { background: var(--rot); border-color: var(--rot); color: #fff; font-weight: 600; }
+
+/* Frage an mich und Entscheidungsliste */
+.fdbox { margin-top: 14px; border-top: 1px solid var(--rand); padding-top: 10px; }
+.fdbox .frage { font-weight: 600; overflow-wrap: anywhere; white-space: pre-wrap; }
+.fdbox .empf { margin-top: 4px; font-size: 13.5px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.fdbox textarea { width: 100%; margin-top: 8px; font: inherit; font-size: 16px; min-height: 54px; padding: 7px 9px; border: 1px solid var(--rand);
+  border-radius: 8px; background: var(--feld); color: var(--text); resize: vertical; }
+.fdnotiz { margin-top: 6px; font-size: 13.5px; color: var(--leise); overflow-wrap: anywhere; }
+.entliste { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ent { border: 1px solid var(--rand); border-left: 4px solid var(--rand); border-radius: 10px; padding: 8px 10px; }
+.ent.ok { border-left-color: var(--akzent); }
+.ent.ok.nein { border-left-color: var(--rot); }
+.enttext { font-size: 14.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.entk { font-weight: 700; margin-right: 4px; }
+.entempf { color: var(--leise); font-size: 13px; }
+.entopt { font-size: 14px; line-height: 1.35; margin: 3px 0 0 2px; overflow-wrap: anywhere; }
+.entopt b { display: inline-block; min-width: 1.2em; }
+.entkn { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
+.entkn button { font-size: 14px; min-height: 40px; min-width: 44px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--rand);
+  background: var(--chip); color: var(--text); cursor: pointer; max-width: 100%; white-space: normal; }
+.entkn button.empfk { border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
+.entkn button.an { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 700; }
+.entkn button.an.nein { background: var(--rot); border-color: var(--rot); color: #fff; }
+.entkn input { flex: 1 1 140px; min-width: 0; font: inherit; font-size: 16px; padding: 6px 9px; min-height: 40px; border: 1px solid var(--rand);
+  border-radius: 9px; background: var(--feld); color: var(--text); }
+.entfuss { margin-top: 4px; font-size: 13px; color: var(--leise); }
+
+/* Formulare */
+.panel label { display: block; font-size: 12.5px; color: var(--leise); margin: 10px 0 3px; }
+.panel input:not([type=checkbox]), .panel select, .panel textarea { width: 100%; font: inherit; font-size: 16px; padding: 8px 10px;
+  border: 1px solid var(--rand); border-radius: 10px; background: var(--bg); color: var(--text); }
+.panel textarea { min-height: 70px; resize: vertical; }
+.panel textarea.gross { min-height: 160px; font-size: 14px; }
+.panel label.haekchen { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin: 12px 0 2px; }
+.panel label.haekchen input { width: 20px; height: 20px; margin: 0; flex: none; }
+.zeile2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.knoepfe .speichern { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 600; }
+.hilfe { font-size: 13px; color: var(--leise); margin: 4px 0 0; }
+.fehltext { color: var(--rot); font-size: 13.5px; margin-top: 8px; }
+pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--feld); border: 1px solid var(--rand); border-radius: 8px; padding: 10px; font-size: 13px; max-height: 50vh; overflow: auto; }
+
+/* Menü */
+.menu { position: fixed; top: 56px; right: 10px; z-index: 25; background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.18); padding: 6px; min-width: 230px; max-width: calc(100vw - 20px); }
+.menu button, .menu a { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); padding: 11px 12px;
+  border-radius: 8px; font-size: 15px; cursor: pointer; text-decoration: none; }
+.menu button:hover, .menu a:hover { background: var(--chip); }
+.menu hr { border: 0; border-top: 1px solid var(--rand); margin: 4px 6px; }
+.menu .mtext { font-size: 12px; color: var(--leise); padding: 6px 12px; overflow-wrap: anywhere; }
+
+/* Startseite */
+.start { max-width: 640px; margin: 6vh auto 0; }
+.start h1 { font-size: 28px; margin: 0 0 8px; }
+.start .ver { font-size: 14px; color: var(--leise); font-weight: 400; }
+.lead { font-size: 17px; margin: 0 0 18px; }
+.startknoepfe { display: grid; gap: 10px; }
+.gross { font-size: 17px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rand); background: var(--karte); color: var(--text); cursor: pointer; min-height: 52px; }
+.gross.haupt { background: var(--akzent); border-color: var(--akzent); color: var(--aufakzent); font-weight: 600; }
+.gross.leise { color: var(--leise); }
+.weiter { margin-top: 12px; }
+.weiter .gross { width: 100%; border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
+.info { margin-top: 26px; font-size: 14px; color: var(--leise); }
+.info h2 { font-size: 15px; color: var(--text); margin: 0 0 6px; }
+.info p { margin: 0 0 10px; }
+
+.hinweis { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 14px;
+  border-radius: 10px; font-size: 14px; z-index: 40; width: max-content; max-width: calc(100% - 24px); }
+.banner { background: var(--karte); border: 1px solid var(--gelb); border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; font-size: 13.5px;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.banner button { border: 1px solid var(--rand); background: var(--chip); color: var(--text); border-radius: 9px; padding: 6px 11px; cursor: pointer; min-height: 38px; }
+.lnk { overflow-wrap: anywhere; }
+.banner { grid-column: 1 / -1; margin-bottom: 0; }
+.spalte.aus { display: none; }
+.klapp, .klappinhalt { display: contents; }
+@media (min-width: 900px) { .klapp, .klappinhalt { display: block; } .klapp:not(.offen) .klappinhalt { display: none; } }
+.hinweis .mehr { display: inline-block; margin: 0 0 0 8px; padding: 3px 10px; background: var(--bg); color: var(--text); }
+.doku { max-width: 760px; margin-top: 3vh; }
+.doku h2 { font-size: 18px; margin: 26px 0 6px; }
+.doku p, .doku li { font-size: 15px; line-height: 1.5; }
+.doku li { margin-bottom: 6px; }
+.doku pre.prompt { max-height: none; }
+</style>
+</head>
+<body>
+<header id="kopf" hidden>
+  <div class="kopf">
+    <h1 id="titel">Board</h1>
+    <button class="neu" id="neuBtn" type="button">+ Neu</button>
+    <button class="sbtn" id="speicherBtn" type="button" title="Speicherstand"></button>
+    <button class="mbtn" id="menuBtn" type="button" aria-haspopup="true" aria-label="Menü">☰</button>
+    <input class="suche" id="suche" type="search" placeholder="Suchen (/) in Text, Notiz, #projekt, @wer, ^id" aria-label="Suchen" autocomplete="off">
+  </div>
+  <div class="leiste" id="chips" role="group" aria-label="Ansicht"></div>
+  <div class="leiste pleiste" id="pchips" role="group" aria-label="Nach Projekt filtern"></div>
+  <div class="aufwand" id="aufwand" role="group" aria-label="Nach Aufwand filtern"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+</header>
+<main id="haupt">
+  <section class="start" id="start">
+    <h1>Board-Maske <span class="ver">v1</span></h1>
+    <p class="lead">Ein Aufgaben-Board im Browser für <b>Deine eigene Markdown-Datei</b>. Kein Konto, kein Server, keine Einrichtung: Datei wählen und los.</p>
+    <div class="startknoepfe">
+      <button class="gross haupt" id="oeffnenBtn" type="button">Board-Datei öffnen</button>
+      <button class="gross" id="anlegenBtn" type="button">Neues Board anlegen</button>
+      <button class="gross leise" id="beispielBtn" type="button">Beispiel ansehen</button>
+    </div>
+    <div class="weiter" id="weiterBox" hidden></div>
+    <div class="info">
+      <h2>Nichts verlässt Dein Gerät</h2>
+      <p>Die Seite besteht nur aus dieser einen HTML-Datei. Eine Sicherheitsregel im Kopf der Seite
+        (<code>Content-Security-Policy: connect-src 'none'</code>) verbietet dem Browser jede Verbindung nach außen,
+        auch zum Anbieter der Seite. Deine Datei wird nur auf dem Gerät gelesen und geschrieben.</p>
+      <p><b>Selbst prüfen:</b> Entwicklertools öffnen (F12), Reiter <i>Netzwerk</i>: nach dem Laden der Seite
+        kommt keine Anfrage mehr dazu. Oder die Seite speichern (Strg+S) und offline als Datei öffnen, sie
+        funktioniert genauso.</p>
+      <p id="faehigkeit"></p>
+      <p><a href="handy.html">Handy anbinden (über Dein eigenes VPN)</a> · <a href="beispiel.md" download>Beispiel-Datei</a> · Version v1, Lizenz MIT</p>
+    </div>
+  </section>
+  <div class="spalten" id="spalten" hidden></div>
+</main>
+<div class="overlay" id="ebene" hidden></div>
+<div class="menu" id="menu" hidden role="menu"></div>
+<div class="hinweis" id="hinweis" hidden role="status"></div>
+<input type="file" id="dateiWahl" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+<script>// Board-Maske: Lesen und Schreiben des Board-Formats (Markdown). Reine Funktionen ohne Browser-Zugriff,
+// damit sie auch unter Node getestet werden koennen (test/rundlauf.js). Vorbild: aufgaben_server.py (lesen, schreiben,
+// normalisieren, abhaken, verschieben). Lizenz MIT.
+"use strict";
+const BM = (() => {
+  const STATUS = ["Offen", "Wartet auf", "Zurückgestellt", "Erledigt", "Verworfen"];
+  const KEIN_FOKUS = new Set(["Erledigt", "Verworfen", "Zurückgestellt"]);
+  const ZU = (s) => s === "Erledigt" || s === "Verworfen";
+  const AUFWAND = ["u5m", "u30m", "u2h", "ab2h"];
+  const FOKUS_MAX = 5;
+  const TITEL_LANG = 90, TITEL_SCHNITT = 70;
+  const BESCHR = "Beschreibung:";
+  const ZEILE_RE = /^- \[( |x|X|-)\] (.*)$/;
+  const KOPF_RE = /^## (.+?)\s*$/;
+  const DATUM_RE = /^(ab|frist|seit|erledigt|verworfen|zuletzt|fokus):(\d{4}-\d{2}-\d{2})$/;
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const ALLE_RE = /^\d{1,3}[twmj]$/;
+  const PROJ_RE = /^#([a-zäöüß][a-z0-9äöüß_-]*)$/i;
+  const ID_RE = /^\^[0-9a-z]{4,12}$/;
+  const DATUM_FELD = {erledigt: "erledigt_am", verworfen: "verworfen_am"};
+
+  function leer(status) {
+    return {id: "", text: "", projekt: "", wer: "", allein: false, ab: "", frist: "", seit: "", erledigt_am: "",
+      verworfen_am: "", alle: "", aufwand: "", zuletzt: "", fokus: "", beschreibung: "", notiz: "", status: status || "Offen"};
+  }
+
+  // Zeilen wie Pythons str.splitlines(): ein abschliessender Umbruch erzeugt keine leere Zeile.
+  function zeilen(text) {
+    const z = text.split(/\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/);
+    if (z.length && z[z.length - 1] === "") z.pop();
+    return z;
+  }
+
+  function liste(v) {
+    return v.split(/[,;]/).map(s => s.trim().replace(/^[#@]/, "").replace(/\.$/, "").trim()).filter(Boolean);
+  }
+
+  // Einrichtung im Kopf: "Namen: ...", "Projekte: ..." (auch als "> Projekte: ..." oder fett) und "### Prompt".
+  const CFG_RE = /^(>\s*)?(?:[-*]\s+)?\**(Namen|Projekte)\**\s*:\**\s*(.*)$/i;
+  const PROMPT_RE = /^###\s+Prompt\b/i;
+  function kopfLesen(kopf) {
+    const k = {titel: "", namen: [], projekte: [], prompt: ""};
+    let imPrompt = false;
+    const pl = [];
+    for (const z of kopf) {
+      if (/^#{1,6}\s/.test(z)) {
+        if (PROMPT_RE.test(z)) { imPrompt = true; continue; }
+        imPrompt = false;
+        const h1 = /^#\s+(.+)$/.exec(z);
+        if (h1 && !k.titel) k.titel = h1[1].trim();
+        continue;
+      }
+      if (imPrompt) { pl.push(z); continue; }
+      const m = CFG_RE.exec(z);
+      if (m) {
+        const v = liste(m[3].replace(/\*\*/g, ""));
+        if (m[2].toLowerCase() === "namen") k.namen = v;
+        else k.projekte = v.map(p => p.toLowerCase());
+      }
+    }
+    while (pl.length && !pl[0].trim()) pl.shift();
+    while (pl.length && !pl[pl.length - 1].trim()) pl.pop();
+    k.prompt = pl.join("\n");
+    return k;
+  }
+
+  // Schreibt Titel, Namen, Projekte und Prompt in den Kopf; alles andere im Kopf bleibt unberuehrt.
+  function kopfSchreiben(kopf, cfg) {
+    let z = kopf.slice();
+    if (!z.some(s => s.trim())) z = [];
+    const titel = (cfg.titel || "").trim() || "Board";
+    const h1 = z.findIndex(s => /^#\s+/.test(s));
+    if (h1 >= 0) z[h1] = "# " + titel; else z.unshift("# " + titel, "");
+    // Prompt-Abschnitt herausnehmen (wird am Ende neu geschrieben)
+    const pi = z.findIndex(s => PROMPT_RE.test(s));
+    if (pi >= 0) {
+      let ende = pi + 1;
+      while (ende < z.length && !/^#{1,6}\s/.test(z[ende])) ende++;
+      z.splice(pi, ende - pi);
+    }
+    const setze = (wort, werte) => {
+      const i = z.findIndex(s => { const m = CFG_RE.exec(s); return m && m[2].toLowerCase() === wort.toLowerCase(); });
+      const zeile = wort + ": " + werte.join(", ");
+      if (i >= 0) { const m = CFG_RE.exec(z[i]); z[i] = (m[1] ? "> " : "") + zeile; return; }
+      if (!werte.length) return;
+      let pos = z.length;
+      while (pos > 0 && !z[pos - 1].trim()) pos--;
+      if (pos > 0 && !CFG_RE.test(z[pos - 1])) { z.splice(pos, 0, ""); pos++; }
+      z.splice(pos, 0, zeile);
+    };
+    setze("Namen", cfg.namen || []);
+    setze("Projekte", cfg.projekte || []);
+    while (z.length && !z[z.length - 1].trim()) z.pop();
+    const prompt = (cfg.prompt || "").replace(/\r/g, "").split("\n")
+      .map(s => /^#/.test(s) || ZEILE_RE.test(s) ? " " + s : s);   // darf keinen Abschnitt und keine Aufgabe erzeugen
+    while (prompt.length && !prompt[prompt.length - 1].trim()) prompt.pop();
+    if (prompt.some(s => s.trim())) z.push("", "### Prompt", ...prompt);
+    return z;
+  }
+
+  // Projekt: das letzte #wort aus der Projektliste im Kopf (ohne Liste: das letzte #wort). Wer: das letzte @wort.
+  // Alle anderen #- und @-Woerter bleiben Teil des Titels, damit beim Zurueckschreiben nichts verloren geht.
+  function eintragAus(rest, status, projekte) {
+    const e = leer(status), text = [], toks = rest.split(/\s+/).filter(Boolean);
+    const istProj = (t) => { const m = PROJ_RE.exec(t); return !!m && (!projekte || projekte.has(m[1].toLowerCase())); };
+    let pi = -1, wi = -1;
+    toks.forEach((t, i) => { if (istProj(t)) pi = i; else if (t[0] === "@" && t.length > 1) wi = i; });
+    for (const [i, t] of toks.entries()) {
+      let m;
+      if (t.toLowerCase() === "allein:ja") e.allein = true;
+      else if (ID_RE.test(t)) e.id = t.slice(1);
+      else if (i === pi) e.projekt = t.slice(1).toLowerCase();
+      else if (i === wi) e.wer = t.slice(1).replace(/_/g, " ");
+      else if (t.startsWith("alle:") && ALLE_RE.test(t.slice(5))) e.alle = t.slice(5);
+      else if (t.startsWith("aufwand:") && AUFWAND.includes(t.slice(8))) e.aufwand = t.slice(8);
+      else if ((m = DATUM_RE.exec(t))) e[DATUM_FELD[m[1]] || m[1]] = m[2];
+      else text.push(t);
+    }
+    e.text = text.join(" ");
+    return e;
+  }
+
+  // projekteVorgabe nur fuer Tests (Abgleich mit dem Original), sonst gilt die Liste im Kopf.
+  function lesen(text, projekteVorgabe) {
+    const kopf = [], eintraege = [], frei = {};
+    STATUS.forEach(s => { frei[s] = []; });
+    let aktuell = null, letzte = null, cfg = null, projekte = null;
+    for (const z of zeilen(text)) {
+      const m = KOPF_RE.exec(z);
+      if (m && STATUS.includes(m[1])) {
+        if (!cfg) { cfg = kopfLesen(kopf); projekte = projekteVorgabe ? new Set(projekteVorgabe) : cfg.projekte.length ? new Set(cfg.projekte) : null; }
+        aktuell = m[1]; letzte = null; continue;
+      }
+      if (aktuell === null) { kopf.push(z); continue; }
+      const mz = ZEILE_RE.exec(z);
+      if (mz) {
+        const e = eintragAus(mz[2], aktuell, projekte);
+        if ("xX".includes(mz[1]) && aktuell !== "Erledigt") e.status = "Erledigt";
+        else if (mz[1] === "-" && aktuell !== "Verworfen") e.status = "Verworfen";
+        eintraege.push(e);
+        letzte = e;
+      } else if (letzte && (z[0] === " " || z[0] === "\t") && z.trim()) {
+        let s = z.trim();
+        if (s.startsWith(BESCHR)) {
+          s = s.slice(BESCHR.length).trim();
+          letzte.beschreibung += (letzte.beschreibung ? "\n" : "") + s;
+        } else letzte.notiz += (letzte.notiz ? "\n" : "") + s;
+      } else if (z.trim()) { frei[aktuell].push(z); letzte = null; }
+    }
+    return {kopf, eintraege, frei, cfg: cfg || kopfLesen(kopf), crlf: /\r\n/.test(text.slice(0, 4000))};
+  }
+
+  function zeileAus(e) {
+    const t = [e.text.trim() || "(ohne Text)"];
+    if (e.projekt) t.push("#" + e.projekt);
+    if (e.wer) t.push("@" + e.wer.trim().replace(/ /g, "_"));
+    if (e.allein) t.push("allein:ja");
+    if (e.alle) t.push("alle:" + e.alle);
+    if (e.aufwand) t.push("aufwand:" + e.aufwand);
+    for (const k of ["ab", "frist", "seit", "zuletzt", "fokus"]) if (e[k]) t.push(k + ":" + e[k]);
+    if (e.erledigt_am) t.push("erledigt:" + e.erledigt_am);
+    if (e.verworfen_am) t.push("verworfen:" + e.verworfen_am);
+    t.push("^" + e.id);
+    const box = {"Erledigt": "x", "Verworfen": "-"}[e.status] || " ";
+    return "- [" + box + "] " + t.join(" ");
+  }
+
+  function schreiben(m) {
+    const z = m.kopf.slice();
+    while (z.length && !z[z.length - 1].trim()) z.pop();
+    for (const s of STATUS) {
+      z.push("", "## " + s);
+      for (const e of m.eintraege) {
+        if (e.status !== s) continue;
+        z.push(zeileAus(e));
+        for (const b of (e.beschreibung || "").split("\n")) if (b.trim()) z.push("  " + BESCHR + " " + b);
+        for (const n of (e.notiz || "").split("\n")) if (n.trim()) z.push("  " + (n.trim().startsWith(BESCHR) ? "(Notiz) " + n.trim() : n));
+      }
+      z.push(...(m.frei[s] || []));
+    }
+    return z.join(m.crlf ? "\r\n" : "\n") + (m.crlf ? "\r\n" : "\n");
+  }
+
+  function neueId(belegt, zufall) {
+    for (;;) {
+      const b = zufall(3);
+      const k = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+      if (!belegt.has(k)) return k;
+    }
+  }
+
+  // Wie normalisieren() im Server: fehlende oder doppelte IDs, Erledigt-/Verworfen-Datum, Stern weg bei Abgeschlossenem.
+  function normalisieren(m, heute, zufall) {
+    let geaendert = false;
+    const alle = new Set(m.eintraege.filter(e => e.id).map(e => e.id)), gesehen = new Set();
+    for (const e of m.eintraege) {
+      if (!e.id || gesehen.has(e.id)) {
+        e.id = neueId(new Set([...alle, ...gesehen]), zufall);
+        geaendert = true;
+      }
+      gesehen.add(e.id);
+      if (e.status === "Erledigt" && !e.erledigt_am) { e.erledigt_am = heute; geaendert = true; }
+      if (e.status !== "Erledigt" && e.erledigt_am) { e.erledigt_am = ""; geaendert = true; }
+      if (e.status === "Verworfen" && !e.verworfen_am) { e.verworfen_am = heute; geaendert = true; }
+      if (e.status !== "Verworfen" && e.verworfen_am) { e.verworfen_am = ""; geaendert = true; }
+      if (e.fokus && KEIN_FOKUS.has(e.status)) { e.fokus = ""; geaendert = true; }
+    }
+    return geaendert;
+  }
+
+  // Datum: JJJJ-MM-TT ohne Zeitzonen-Fallen (Rechnung in UTC)
+  function isoZuDatum(s) { const [j, m, t] = s.split("-").map(Number); return new Date(Date.UTC(j, m - 1, t)); }
+  function datumZuIso(d) { return d.toISOString().slice(0, 10); }
+  function naechstes(von, alle) {
+    const n = parseInt(alle, 10), einheit = alle.slice(-1), d = isoZuDatum(von);
+    if (einheit === "t") return datumZuIso(new Date(d.getTime() + n * 864e5));
+    if (einheit === "w") return datumZuIso(new Date(d.getTime() + 7 * n * 864e5));
+    const mon = d.getUTCMonth() + (einheit === "m" ? n : 12 * n);
+    const jahr = d.getUTCFullYear() + Math.floor(mon / 12), monat = ((mon % 12) + 12) % 12;
+    const letzter = new Date(Date.UTC(jahr, monat + 1, 0)).getUTCDate();
+    return datumZuIso(new Date(Date.UTC(jahr, monat, Math.min(d.getUTCDate(), letzter))));
+  }
+  function tageBis(iso, heute) { return Math.round((isoZuDatum(iso) - isoZuDatum(heute)) / 864e5); }
+
+  // Erledigt-Knopf: regelmaessige Aufgabe springt weiter (ab: heute plus Rhythmus, Frist wandert mit), sonst Erledigt.
+  function abhaken(e, heute) {
+    if (e.alle && !ZU(e.status)) {
+      const neuAb = naechstes(heute, e.alle);
+      const altAb = e.ab || e.frist;
+      if (e.frist && altAb) e.frist = naechstes(neuAb, Math.max(tageBis(e.frist, altAb), 0) + "t");
+      e.ab = neuAb;
+      e.zuletzt = heute;
+      e.fokus = "";
+      return neuAb;
+    }
+    e.status = "Erledigt";
+    return "";
+  }
+
+  function verschieben(e, um, heute) {
+    const basis = e.ab && e.ab > heute ? e.ab : heute;
+    e.ab = naechstes(basis, um);
+    e.fokus = "";
+    return e.ab;
+  }
+
+  function titelKurz(t) {
+    const kopf = t.length > TITEL_SCHNITT ? t.slice(0, TITEL_SCHNITT + 1).replace(/\s+\S*$/, "") : t;
+    return kopf.replace(/[ ,;:(-]+$/, "") + " …";
+  }
+
+  // Zeilen normalisieren wie bereinigen() im Server: Leerraum je Zeile zusammenziehen, Leerzeilen weg.
+  function mehrzeilig(s) {
+    return String(s || "").replace(/\r/g, "").split("\n").map(z => z.split(/\s+/).filter(Boolean).join(" ")).filter(Boolean).join("\n");
+  }
+  function einzeilig(s) { return String(s || "").split(/\s+/).filter(Boolean).join(" "); }
+
+  function neueDatei(cfg) {
+    const kopf = kopfSchreiben([
+      "# " + (cfg.titel || "Board"), "",
+      "> Board-Datei für die Board-Maske. Eine Aufgabe ist eine Zeile:",
+      "> `- [ ] Titel #projekt @wer allein:ja alle:1w aufwand:u30m ab:JJJJ-MM-TT frist:JJJJ-MM-TT seit:JJJJ-MM-TT ^id`",
+      "> Darunter eingerückt: Zeilen `Beschreibung: ...`, danach die Notiz. Abschnitte: Offen, Wartet auf, Zurückgestellt, Erledigt, Verworfen.",
+    ], cfg);
+    const frei = {};
+    STATUS.forEach(s => { frei[s] = []; });
+    return schreiben({kopf, eintraege: [], frei, crlf: false});
+  }
+
+  return {STATUS, KEIN_FOKUS, ZU, AUFWAND, FOKUS_MAX, TITEL_LANG, ISO_RE, ALLE_RE, PROJ_RE, leer, lesen, schreiben, zeileAus,
+    normalisieren, naechstes, tageBis, abhaken, verschieben, titelKurz, mehrzeilig, einzeilig, kopfLesen, kopfSchreiben, neueDatei, liste};
+})();
+if (typeof module !== "undefined") module.exports = BM;
+
+const BEISPIEL = "# Beispiel-Board\n\n> Board-Datei für die Board-Maske. Eine Aufgabe ist eine Zeile:\n> `- [ ] Titel #projekt @wer allein:ja alle:1w aufwand:u30m ab:JJJJ-MM-TT frist:JJJJ-MM-TT seit:JJJJ-MM-TT ^id`\n> Darunter eingerückt: Zeilen `Beschreibung: ...`, danach die Notiz. Abschnitte: Offen, Wartet auf, Zurückgestellt, Erledigt, Verworfen.\n\nNamen: Anna, Ben, KI\nProjekte: haushalt, garten, arbeit, verein, sonstiges\n\n### Prompt\nDu hilfst Anna und Ben mit dieser Aufgabenliste. Bearbeite nur Aufgaben mit @KI.\nSchreibe Deinen Stand als eingerückte Zeile unter die Aufgabe, ganz oben mit Datum.\nBrauchst Du eine Entscheidung, schreibe eine Zeile \"BRAUCHT ANNA: Frage. Empfehlung: Dein Tipp\" und setze @Anna.\nLösche nie etwas. Erledigtes kommt mit [x] unter ## Erledigt.\n\n## Offen\n- [ ] Heizkostenabrechnung prüfen #haushalt @Anna aufwand:u30m frist:2026-11-30 seit:2026-11-18 fokus:2026-11-20 ^a1b2c3\n  Beschreibung: Abrechnung 2025 kam am 17.11. Verbrauch mit dem Vorjahr vergleichen, Fristen für Einspruch beachten.\n  Stand 24.11. 18:10: Vorjahr lag bei 9.840 kWh, neu 10.320 kWh (plus 5 %). Einspruch bis 15.12. möglich.\n- [ ] Angebote für neue Waschmaschine vergleichen #haushalt @Anna seit:2026-11-20 ^d4e5f6\n  Beschreibung: Frontlader, 8 kg, leise, Energieklasse A. Budget bis 650 €.\n  BRAUCHT ANNA: Welche nehmen wir? Empfehlung: Modell B, leiser und 3 Jahre Garantie.\n  E1 Modell: a Modell A, 549 €, 52 dB; b Modell B, 619 €, 48 dB, 3 Jahre Garantie; c weiter suchen (b)\n  E2 Altgerät mitnehmen lassen für 30 € (ja)\n  E3 Lieferung am Samstag (nein, Aufpreis 25 €)\n- [ ] Rasen vertikutieren #garten @Ben aufwand:u2h ab:2027-03-15 seit:2026-10-02 ^0a1b2c\n  Beschreibung: Gerät beim Nachbarn leihen, danach nachsäen.\n- [ ] Müll rausbringen #haushalt @Ben alle:1w aufwand:u5m ab:2026-11-24 seit:2026-09-01 zuletzt:2026-11-17 fokus:2026-11-24 ^f1f2f3\n- [ ] Rechnungen für die Steuer sammeln #arbeit @KI allein:ja aufwand:ab2h frist:2027-01-31 seit:2026-11-10 ^c0ffee\n  Beschreibung: Alle Belege 2026 aus dem Ordner Rechnungen nach Monat sortieren und Summen je Kategorie bilden.\n  Stand 23.11. 21:00: Januar bis August sortiert, Summen in der Tabelle steuer2026.ods. Weiter mit September.\n- [ ] Vereinsfeier: Raum anfragen #verein @Ben aufwand:u30m frist:2026-12-05 seit:2026-11-21 ^beef01\n  Beschreibung: Für 40 Personen am 19.12. Bürgerhaus oder Pfarrsaal anfragen. Infos: https://example.org/raeume\n- [ ] Fahrradreifen flicken #sonstiges @Anna aufwand:u30m seit:2026-11-12 ^abcdef\n\n## Wartet auf\n- [ ] Rückruf Hausverwaltung wegen Fenster #haushalt @Hausverwaltung seit:2026-11-14 ^123abc\n  Beschreibung: Fenster im Bad schließt nicht mehr dicht. Ticket 4711.\n  Stand 21.11.: Nachgefragt, Rückruf versprochen bis 28.11.\n- [ ] Paket von der Gärtnerei #garten @Ben frist:2026-11-29 seit:2026-11-19 ^456def\n\n## Zurückgestellt\n- [ ] Keller ausmisten #haushalt @Ben aufwand:ab2h seit:2026-08-01 ^789abc\n  Beschreibung: Erst nach dem Winter, wenn es draußen trocken ist.\n\n## Erledigt\n- [x] Winterreifen montieren #sonstiges @Ben seit:2026-10-10 erledigt:2026-11-02 ^aa11bb\n- [x] Steuerberater Termin vereinbaren #arbeit @Anna seit:2026-10-20 erledigt:2026-11-15 ^cc22dd\n  Stand 15.11.: Termin am 08.01.2027 um 10 Uhr.\n\n## Verworfen\n- [-] Pool aufstellen #garten @Ben seit:2026-06-01 verworfen:2026-09-10 ^ee33ff\n  Beschreibung: Zu wenig Platz, bewusst nicht gemacht.\n";
+// Board-Maske: Oberflaeche. Braucht format.js (BM) und die Konstante BEISPIEL (vom Bauskript eingesetzt).
+// Kein Netzwerk: die Seite liest und schreibt nur die Datei, die Du waehlst. Lizenz MIT.
+"use strict";
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const SERVER = !!document.querySelector('meta[name="board-server"]') && location.protocol.startsWith("http");
+  const KANN_DATEI = typeof window.showOpenFilePicker === "function";
+  const KI_NAMEN = /^(ki|ai|claude|agent|assistent|assistant|bot|chatgpt|gpt|gemini|copilot)$/i;
+
+  // ------------------------------------------------------------------ Hilfen
+  function el(tag, props, ...kinder) {
+    const e = document.createElement(tag);
+    if (props) for (const [k, v] of Object.entries(props)) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === "class") e.className = v;
+      else if (k === "text") e.textContent = v;
+      else if (k === "value") e.value = v;
+      else if (k === "checked") e.checked = !!v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? "" : String(v));
+    }
+    for (const k of kinder.flat(3)) if (k !== null && k !== undefined && k !== false) e.append(k instanceof Node ? k : String(k));
+    return e;
+  }
+  const zwei = (n) => String(n).padStart(2, "0");
+  function heute() { const d = new Date(); return d.getFullYear() + "-" + zwei(d.getMonth() + 1) + "-" + zwei(d.getDate()); }
+  function stempel() { const d = new Date(); return zwei(d.getDate()) + "." + zwei(d.getMonth() + 1) + ". " + zwei(d.getHours()) + ":" + zwei(d.getMinutes()); }
+  const zufall = (n) => crypto.getRandomValues(new Uint8Array(n));
+  function kurz(iso) {
+    if (!iso) return "";
+    const [j, m, t] = iso.split("-");
+    return t + "." + m + "." + (j !== heute().slice(0, 4) ? j.slice(2) : "");
+  }
+  const ALLE_TEXT = {"1t": "täglich", "1w": "wöchentlich", "2w": "alle 2 Wochen", "1m": "monatlich", "3m": "vierteljährlich", "1j": "jährlich"};
+  function alleText(a) {
+    if (ALLE_TEXT[a]) return ALLE_TEXT[a];
+    const n = parseInt(a, 10), w = {t: ["Tag", "Tage"], w: ["Woche", "Wochen"], m: ["Monat", "Monate"], j: ["Jahr", "Jahre"]}[a.slice(-1)];
+    return "alle " + n + " " + (n === 1 ? w[0] : w[1]);
+  }
+  const AUFWAND_TEXT = {u5m: "≤ 5 Min", u30m: "≤ 30 Min", u2h: "≤ 2 Std", ab2h: "> 2 Std"};
+  const KURZ_STATUS = {"Offen": "Offen", "Wartet auf": "Wartet", "Zurückgestellt": "Zurück", "Erledigt": "Erledigt", "Verworfen": "Verw."};
+  const URL_RE = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:!?)\]]/g;
+  function mitLinks(text) {
+    const teile = [];
+    let pos = 0;
+    for (const m of text.matchAll(URL_RE)) {
+      teile.push(text.slice(pos, m.index));
+      teile.push(el("a", {href: m[0], target: "_blank", rel: "noopener noreferrer", class: "lnk", text: m[0]}));
+      pos = m.index + m[0].length;
+    }
+    teile.push(text.slice(pos));
+    return teile;
+  }
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  let hinweisZeit = 0;
+  function hinweis(text, aktion) {
+    const h = $("hinweis");
+    h.replaceChildren(text);
+    if (aktion) h.append(" ", el("button", {class: "mehr", type: "button", text: aktion.text, onclick: () => { h.hidden = true; aktion.tun(); }}));
+    h.hidden = false;
+    clearTimeout(hinweisZeit);
+    hinweisZeit = setTimeout(() => { h.hidden = true; }, aktion ? 7000 : 3500);
+  }
+  function fehler(err) {
+    console.error(err);
+    zustand.fehler = true;
+    renderSpeicher();
+    let t = err && err.message ? err.message : String(err);
+    if (err && err.name === "NotAllowedError") { t = "Kein Schreibrecht mehr für die Datei. Oben auf den Speicherstand tippen und erlauben."; zustand.recht = false; }
+    if (err && err.name === "NotFoundError") t = "Die Datei ist nicht mehr da (umbenannt oder verschoben?). Bitte neu öffnen.";
+    hinweis("Fehler: " + t);
+  }
+
+  // ------------------------------------------------------------------ Speicher im Browser (IndexedDB)
+  const DB = {
+    db: null, ersatz: new Map(),
+    async oeffnen() {
+      if (this.db) return this.db;
+      this.db = await new Promise((ok, nein) => {
+        const r = indexedDB.open("board-maske", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("kv");
+        r.onsuccess = () => ok(r.result);
+        r.onerror = () => nein(r.error);
+      });
+      return this.db;
+    },
+    async tx(modus, fn) {
+      try {
+        const db = await this.oeffnen();
+        return await new Promise((ok, nein) => {
+          const t = db.transaction("kv", modus), r = fn(t.objectStore("kv"));
+          t.oncomplete = () => ok(r && r.result);
+          t.onerror = () => nein(t.error);
+          t.onabort = () => nein(t.error);
+        });
+      } catch (e) { return undefined; }
+    },
+    async get(k) { const v = await this.tx("readonly", s => s.get(k)); return v === undefined ? this.ersatz.get(k) : v; },
+    async set(k, v) { this.ersatz.set(k, v); await this.tx("readwrite", s => s.put(v, k)); },
+    async del(k) { this.ersatz.delete(k); await this.tx("readwrite", s => s.delete(k)); },
+  };
+  const LS = {
+    get(k, d) { try { const v = localStorage.getItem("bm." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("bm." + k, JSON.stringify(v)); } catch (e) { /* privat */ } },
+  };
+
+  // ------------------------------------------------------------------ Zustand
+  const zustand = {
+    m: null, text: "", recht: true, fehler: false,
+    suche: "", chip: "", projekt: "", aufwand: "", tab: "Offen",
+    klapp: LS.get("klapp", {}), mehrErledigt: 40, detailId: "",
+  };
+  let Q = null;  // Quelle: {art: "handle"|"kopie"|"server", name, handle, lastMod, etag, ungesichert, beispiel}
+
+  // ------------------------------------------------------------------ Quelle lesen und schreiben
+  async function rechtSichern(fragen) {
+    if (!Q || Q.art !== "handle") return true;
+    let r = await Q.handle.queryPermission({mode: "readwrite"});
+    if (r !== "granted" && fragen) r = await Q.handle.requestPermission({mode: "readwrite"});
+    zustand.recht = r === "granted";
+    return zustand.recht;
+  }
+  async function quelleLesen() {
+    if (Q.art === "handle") { const f = await Q.handle.getFile(); Q.lastMod = f.lastModified; return await f.text(); }
+    if (Q.art === "kopie") { const k = await DB.get("kopie"); return k ? k.text : ""; }
+    const r = await fetch("board.md", {cache: "no-store"});
+    if (!r.ok) throw new Error("Der Board-Dienst antwortet mit " + r.status);
+    Q.etag = r.headers.get("ETag");
+    return await r.text();
+  }
+  async function quelleSchreiben(text) {
+    if (Q.art === "handle") {
+      const w = await Q.handle.createWritable();   // schreibt in eine Zwischendatei, ersetzt erst beim Schliessen
+      await w.write(text);
+      await w.close();
+      Q.lastMod = (await Q.handle.getFile()).lastModified;
+    } else if (Q.art === "kopie") {
+      await DB.set("kopie", {name: Q.name, text, ungesichert: !Q.beispiel, beispiel: !!Q.beispiel});
+      Q.ungesichert = !Q.beispiel;
+    } else {
+      const r = await fetch("board.md", {method: "PUT", cache: "no-store", body: text,
+        headers: {"Content-Type": "text/markdown; charset=utf-8", "If-Match": Q.etag || "*"}});
+      if (r.status === 412) { const e = new Error("Die Datei wurde gerade woanders geändert."); e.konflikt = true; throw e; }
+      if (!r.ok) throw new Error("Speichern fehlgeschlagen (" + r.status + ")");
+      Q.etag = r.headers.get("ETag");
+    }
+    zustand.fehler = false;
+  }
+
+  function setzeModell(m, text) {
+    zustand.m = m;
+    zustand.text = text;
+    render();
+  }
+
+  // Jede Aenderung: Datei frisch lesen, Aenderung per Kennung anwenden, zurueckschreiben. So geht nichts verloren,
+  // was jemand anderes (z. B. Deine KI) inzwischen in die Datei geschrieben hat.
+  let kette = Promise.resolve();
+  function aendern(fn, okText) {
+    const lauf = kette.then(async () => {
+      if (!(await rechtSichern(true))) { hinweis("Ohne Schreibrecht kann ich nichts speichern."); renderSpeicher(); return false; }
+      for (let versuch = 0; versuch < 3; versuch++) {
+        const text = await quelleLesen();
+        const m = BM.lesen(text);
+        BM.normalisieren(m, heute(), zufall);
+        const erg = fn(m);
+        if (erg === false) { setzeModell(m, text); return false; }
+        BM.normalisieren(m, heute(), zufall);
+        const neu = BM.schreiben(m);
+        try { if (neu !== text) await quelleSchreiben(neu); }
+        catch (err) { if (err.konflikt && versuch < 2) continue; throw err; }
+        setzeModell(m, neu);
+        if (okText) typeof okText === "function" ? okText(erg) : hinweis(okText);
+        return erg;
+      }
+      return false;
+    }).catch(err => { fehler(err); return false; });
+    kette = lauf.catch(() => {});
+    return lauf;
+  }
+  function mitEintrag(id, fn, okText) {
+    return aendern(m => {
+      const e = m.eintraege.find(x => x.id === id);
+      if (!e) { hinweis("Die Aufgabe ^" + id + " steht nicht mehr in der Datei."); return false; }
+      const r = fn(e, m);
+      return r === undefined ? e : r;
+    }, okText);
+  }
+
+  const ABSCHNITT_RE = /^## (Offen|Wartet auf|Zurückgestellt|Erledigt|Verworfen)\s*$/m;
+  async function laden() {
+    const text = await quelleLesen();
+    if (text.trim() && !ABSCHNITT_RE.test(text)) {
+      const ja = await frage("Noch kein Board",
+        "In „" + Q.name + "“ stehen noch keine Board-Abschnitte (## Offen, ## Erledigt …). Soll ich sie unten anfügen? Der bisherige Inhalt bleibt oben stehen.",
+        [["Ja, als Board nutzen", "ja"], ["Abbrechen", ""]]);
+      if (ja !== "ja") { await schliessen(true); return; }
+    }
+    const m = BM.lesen(text);
+    if (!text.trim()) {
+      zeigeBoard(m, text);
+      einrichtung(true);
+      return;
+    }
+    if (BM.normalisieren(m, heute(), zufall) || !ABSCHNITT_RE.test(text)) {
+      const neu = BM.schreiben(m);
+      if (await rechtSichern(true)) {
+        await quelleSchreiben(neu);
+        hinweis("Fehlende Kennungen oder Abschnitte ergänzt und gespeichert.");
+        zeigeBoard(m, neu);
+        return;
+      }
+    }
+    zeigeBoard(m, text);
+  }
+  function zeigeBoard(m, text) {
+    $("start").hidden = true;
+    $("kopf").hidden = false;
+    $("spalten").hidden = false;
+    zustand.fehler = false;
+    setzeModell(m, text);
+  }
+
+  // Fremde Aenderungen (z. B. Deine KI schreibt in die Datei) alle 4 Sekunden nachladen
+  let pruefeLaeuft = false;
+  setInterval(async () => {
+    if (!Q || !zustand.m || document.hidden || Q.art === "kopie" || pruefeLaeuft) return;
+    pruefeLaeuft = true;
+    try {
+      if (Q.art === "handle") {
+        if ((await Q.handle.queryPermission({mode: "read"})) !== "granted") return;
+        const f = await Q.handle.getFile();
+        if (f.lastModified === Q.lastMod) return;
+        await kette;
+        const text = await quelleLesen();
+        if (text !== zustand.text) setzeModell(BM.lesen(text), text);
+      } else {
+        const r = await fetch("board.md", {cache: "no-store", headers: {"If-None-Match": Q.etag || ""}});
+        if (r.status !== 200) return;
+        await kette;
+        const text = await quelleLesen();
+        if (text !== zustand.text) setzeModell(BM.lesen(text), text);
+      }
+    } catch (e) { /* naechster Versuch */ } finally { pruefeLaeuft = false; }
+  }, 4000);
+
+  // ------------------------------------------------------------------ Ableitungen
+  function cfg() { return zustand.m ? zustand.m.cfg : {titel: "", namen: [], projekte: [], prompt: ""}; }
+  function ich() { return LS.get("ich", ""); }
+  function projekte() {
+    const p = [...cfg().projekte];
+    for (const e of zustand.m.eintraege) if (e.projekt && !p.includes(e.projekt)) p.push(e.projekt);
+    return p;
+  }
+  function namen() {
+    const n = [...cfg().namen];
+    const zahl = {};
+    for (const e of zustand.m.eintraege) if (e.wer && !BM.ZU(e.status)) zahl[e.wer] = (zahl[e.wer] || 0) + 1;
+    for (const w of Object.keys(zahl).sort((a, b) => zahl[b] - zahl[a])) if (!n.some(x => x.toLowerCase() === w.toLowerCase())) n.push(w);
+    return n;
+  }
+  function farbe(p) {
+    const i = cfg().projekte.indexOf(p);
+    if (i >= 0) return "pc" + (i % 12);
+    let h = 0;
+    for (const c of p) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return "pc" + (h % 12);
+  }
+  const gleich = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+  // Offene Frage an mich: letzte Zeile "BRAUCHT <ich>" in der Notiz, danach noch keine Antwortzeile von mir.
+  const ENT_ZEILE = /^\s*(?:[-*]\s+)?([A-Z]{0,2}\d{1,3})[.):]?\s+(\S.*)$/;
+  function frageInfo(e) {
+    const name = ich();
+    if (!name || BM.ZU(e.status) || !e.notiz) return null;
+    const z = e.notiz.split("\n");
+    const braucht = new RegExp("\\bbraucht\\s+" + escRe(name) + "\\b\\s*:?", "i");
+    const antwort = new RegExp("^" + escRe(name) + "\\s+\\d{2}\\.\\d{2}\\.\\s+\\d{2}:\\d{2}\\s+\\(Board\\)", "i");
+    let i = -1;
+    for (let k = z.length - 1; k >= 0; k--) if (braucht.test(z[k])) { i = k; break; }
+    if (i < 0) return null;
+    for (let k = i + 1; k < z.length; k++) if (antwort.test(z[k])) return null;
+    const nach = z[i].slice(z[i].search(braucht)).replace(braucht, "").trim();
+    const ep = nach.search(/Empfehlung\s*:/i);
+    const info = {frage: (ep >= 0 ? nach.slice(0, ep) : nach).trim(), empf: ep >= 0 ? nach.slice(ep).replace(/^Empfehlung\s*:\s*/i, "").trim() : "", liste: []};
+    for (let k = i + 1; k < z.length; k++) {
+      const m = ENT_ZEILE.exec(z[k]);
+      if (m) info.liste.push(entPunkt(m[1], m[2]));
+    }
+    if (info.liste.length < 2) info.liste = [];
+    return info;
+  }
+  function entPunkt(schluessel, rest) {
+    let text = rest.trim(), empf = "";
+    const k = /\(([^()]*)\)\s*$/.exec(text);
+    if (k) { empf = k[1].trim(); text = text.slice(0, k.index).trim(); }
+    let optionen = [];
+    const teile = text.split(/;\s*/);
+    const erst = /^(.*?:)?\s*a\s+(.+)$/.exec(teile[0]);
+    if (teile.length >= 2 && erst && /^b\s+/.test(teile[1])) {
+      optionen = [["a", erst[2].trim()]];
+      for (const t of teile.slice(1)) { const m = /^([a-e])\s+(.+)$/.exec(t.trim()); if (m) optionen.push([m[1], m[2].trim()]); else if (optionen.length) optionen[optionen.length - 1][1] += "; " + t; }
+      text = (erst[1] || "").replace(/:$/, "").trim();
+    }
+    let empfWahl = "";
+    const ew = /^([a-e]|ja|nein)\b/i.exec(empf);
+    if (ew && (optionen.length ? optionen.some(o => o[0] === ew[1].toLowerCase()) : /^(ja|nein)$/i.test(ew[1]))) empfWahl = ew[1].toLowerCase();
+    return {schluessel, text, optionen, empf, empfWahl};
+  }
+
+  function passtFilter(e, info) {
+    const q = zustand.suche.trim().toLowerCase();
+    if (q) {
+      const heu = [e.text, e.beschreibung, e.notiz, "#" + e.projekt, "@" + e.wer, "^" + e.id].join(" ").toLowerCase();
+      if (!q.split(/\s+/).every(w => heu.includes(w))) return false;
+    }
+    if (zustand.projekt && e.projekt !== zustand.projekt) return false;
+    if (zustand.aufwand && (e.aufwand || "ohne") !== zustand.aufwand) return false;
+    const c = zustand.chip;
+    if (c === "frage" && !info) return false;
+    if (c === "meine" && !gleich(e.wer, ich())) return false;
+    if (c === "fokus" && !e.fokus) return false;
+    if (c === "frist" && !(e.frist && BM.tageBis(e.frist, heute()) <= 7)) return false;
+    if (c.startsWith("wer:") && !gleich(e.wer, c.slice(4))) return false;
+    return true;
+  }
+
+  // ------------------------------------------------------------------ Darstellung
+  function render() {
+    if (!zustand.m) return;
+    const c = cfg();
+    $("titel").textContent = c.titel || (Q && Q.name) || "Board";
+    document.title = (c.titel || "Board") + " · Board-Maske";
+    renderSpeicher();
+    renderLeisten();
+    renderSpalten();
+  }
+
+  function renderSpeicher() {
+    const b = $("speicherBtn");
+    if (!Q) return;
+    let cls = "sbtn ok", t = Q.name || "Board";
+    if (zustand.fehler) { cls = "sbtn fehler"; t = "Fehler beim Speichern"; }
+    else if (Q.art === "handle" && !zustand.recht) { cls = "sbtn warn"; t = "Zugriff erlauben"; }
+    else if (Q.art === "kopie" && Q.beispiel) { cls = "sbtn warn"; t = "Beispiel, nur im Browser"; }
+    else if (Q.art === "kopie" && Q.ungesichert) { cls = "sbtn warn"; t = "Nicht gesichert: herunterladen"; }
+    else if (Q.art === "kopie") t = "Kopie im Browser";
+    else if (Q.art === "server") t = "Board über Deinen PC";
+    b.className = cls;
+    b.textContent = t;
+    b.title = Q.art === "handle" ? "Gespeichert direkt in " + Q.name : t;
+  }
+
+  function chip(text, an, klick, extra) {
+    return el("button", {type: "button", class: "chip" + (an ? " an" : "") + (extra ? " " + extra : ""), "aria-pressed": an ? "true" : "false", text, onclick: klick});
+  }
+  function umschalten(feld, wert) { zustand[feld] = zustand[feld] === wert ? "" : wert; render(); }
+
+  function renderLeisten() {
+    const alle = zustand.m.eintraege, aktiv = alle.filter(e => !BM.ZU(e.status) && e.status !== "Zurückgestellt");
+    const name = ich(), fragen = aktiv.filter(e => frageInfo(e)).length;
+    const chips = [];
+    if (name) {
+      chips.push(chip("Fragen an mich " + fragen, zustand.chip === "frage", () => umschalten("chip", "frage"), fragen ? "frage" : ""));
+      chips.push(chip("Meine " + aktiv.filter(e => gleich(e.wer, name)).length, zustand.chip === "meine", () => umschalten("chip", "meine")));
+    } else if (namen().length) {
+      chips.push(chip("Wer bist Du?", false, waehleIch, "ich"));
+    }
+    chips.push(chip("★ Fokus " + aktiv.filter(e => e.fokus).length, zustand.chip === "fokus", () => umschalten("chip", "fokus")));
+    chips.push(chip("Frist ≤ 7 Tage " + aktiv.filter(e => e.frist && BM.tageBis(e.frist, heute()) <= 7).length,
+      zustand.chip === "frist", () => umschalten("chip", "frist"), "trenn"));
+    for (const w of namen().filter(n => !gleich(n, name)).slice(0, 10)) {
+      const n = aktiv.filter(e => gleich(e.wer, w)).length;
+      if (n) chips.push(chip("@" + w + " " + n, zustand.chip === "wer:" + w, () => umschalten("chip", "wer:" + w)));
+    }
+    $("chips").replaceChildren(...chips);
+
+    const pch = [];
+    for (const p of projekte()) {
+      const n = aktiv.filter(e => e.projekt === p).length;
+      pch.push(chip("#" + p + " " + n, zustand.projekt === p, () => umschalten("projekt", p), "pchip " + farbe(p)));
+    }
+    $("pchips").replaceChildren(...pch);
+    $("pchips").hidden = !pch.length;
+
+    const afw = [el("span", {class: "aufwand-titel", text: "Aufwand"})];
+    for (const a of [...BM.AUFWAND, "ohne"]) {
+      const n = aktiv.filter(e => (e.aufwand || "ohne") === a).length;
+      afw.push(el("button", {type: "button", class: "afw" + (zustand.aufwand === a ? " an" : ""), "aria-pressed": zustand.aufwand === a ? "true" : "false",
+        onclick: () => umschalten("aufwand", a)}, a === "ohne" ? "ohne Angabe" : AUFWAND_TEXT[a], el("b", {text: String(n)})));
+    }
+    $("aufwand").replaceChildren(...afw);
+
+    const tabs = BM.STATUS.map(s => {
+      const n = alle.filter(e => e.status === s && passtFilter(e, frageInfo(e))).length;
+      return el("button", {type: "button", role: "tab", class: "tab" + (zustand.tab === s ? " an" : ""), "aria-selected": zustand.tab === s ? "true" : "false",
+        onclick: () => { zustand.tab = s; render(); scrollTo(0, 0); }}, KURZ_STATUS[s], el("b", {text: String(n)}));
+    });
+    $("tabs").replaceChildren(...tabs);
+  }
+
+  function sortiert(liste, status) {
+    const h = heute();
+    if (status === "Erledigt" || status === "Verworfen") {
+      const f = status === "Erledigt" ? "erledigt_am" : "verworfen_am";
+      return liste.map((e, i) => [e, i]).sort((a, b) => (b[0][f] || "").localeCompare(a[0][f] || "") || a[1] - b[1]).map(x => x[0]);
+    }
+    if (status !== "Offen") return liste;
+    const schluessel = (e) => [e.ab && e.ab > h ? 1 : 0, e.fokus ? 0 : 1, e.frist || "9999"];
+    return liste.map((e, i) => [e, i, schluessel(e)]).sort((a, b) => {
+      for (let k = 0; k < 3; k++) { if (a[2][k] < b[2][k]) return -1; if (a[2][k] > b[2][k]) return 1; }
+      return a[1] - b[1];
+    }).map(x => x[0]);
+  }
+
+  function renderSpalten() {
+    const haupt = $("spalten"), teile = [];
+    const name = ich();
+    if (!name && namen().length) {
+      teile.push(el("div", {class: "banner"}, "Wer bist Du? Dann zeigt die Maske Fragen, die an Dich gehen.",
+        namen().slice(0, 8).map(n => el("button", {type: "button", text: n, onclick: () => { LS.set("ich", n); render(); }}))));
+    }
+    if (Q && Q.beispiel) teile.push(el("div", {class: "banner"}, "Das ist das Beispiel-Board. Änderungen bleiben nur in diesem Browser.",
+      el("button", {type: "button", text: "Eigene Datei öffnen", onclick: oeffnen})));
+    const spalte = (s, titel, cls) => {
+      const alle = zustand.m.eintraege.filter(e => e.status === s);
+      const liste = sortiert(alle.filter(e => passtFilter(e, frageInfo(e))), s);
+      const grenze = s === "Erledigt" || s === "Verworfen" ? zustand.mehrErledigt : Infinity;
+      const karten = liste.slice(0, grenze).map(karte);
+      if (!karten.length) karten.push(el("div", {class: "leer", text: alle.length ? "Nichts passt zum Filter." : "Keine Aufgaben."}));
+      const sec = el("section", {class: "spalte " + cls + (zustand.tab === s ? "" : " aus")},
+        el("h2", {text: titel + " · " + liste.length}), el("div", {class: "liste"}, karten));
+      if (liste.length > grenze) sec.append(el("button", {type: "button", class: "mehr", text: "Mehr zeigen (" + (liste.length - grenze) + ")",
+        onclick: () => { zustand.mehrErledigt += 100; render(); }}));
+      return [sec, liste.length];
+    };
+    teile.push(spalte("Offen", "Offen", "s-offen")[0]);
+    teile.push(spalte("Wartet auf", "Wartet auf", "s-wartet")[0]);
+    const rail = el("div", {class: "rail"});
+    for (const [s, cls] of [["Zurückgestellt", "s-zurueck"], ["Erledigt", "s-erledigt"], ["Verworfen", "s-verworfen"]]) {
+      const [sec, n] = spalte(s, s, cls);
+      const offen = !!zustand.klapp[s];
+      const k = el("div", {class: "klapp" + (offen ? " offen" : "")},
+        el("button", {type: "button", class: "klappkopf", "aria-expanded": offen ? "true" : "false",
+          onclick: () => { zustand.klapp[s] = !zustand.klapp[s]; LS.set("klapp", zustand.klapp); render(); }},
+        el("span", {class: "pfeil", text: "▶"}), s + " · " + n),
+        el("div", {class: "klappinhalt"}, sec));
+      rail.append(k);
+    }
+    teile.push(rail);
+    haupt.replaceChildren(...teile);
+  }
+
+  function metaTeile(e, info, imDetail) {
+    const t = [], h = heute();
+    if (e.projekt) t.push(el("span", {class: "proj " + farbe(e.projekt), text: "#" + e.projekt}));
+    if (info) t.push(el("span", {class: "tag fragetag", text: "Frage an Dich"}));
+    if (e.wer) t.push(el("span", {text: "@" + e.wer}));
+    if (e.frist && !BM.ZU(e.status)) {
+      const d = BM.tageBis(e.frist, h);
+      t.push(el("span", {class: "frist" + (d <= 3 ? " knapp" : ""), text: "Frist " + kurz(e.frist) + (d < 0 ? " (vorbei)" : d === 0 ? " (heute)" : "")}));
+    }
+    if (e.ab && e.ab > h && !BM.ZU(e.status)) t.push(el("span", {text: "ab " + kurz(e.ab)}));
+    if (e.alle) t.push(el("span", {class: "tag", text: "↻ " + alleText(e.alle)}));
+    if (e.aufwand) t.push(el("span", {class: "tag aufw", text: AUFWAND_TEXT[e.aufwand]}));
+    if (e.allein) t.push(el("span", {class: "tag allein", text: "allein"}));
+    if (e.status === "Erledigt" && e.erledigt_am) t.push(el("span", {text: "erledigt " + kurz(e.erledigt_am)}));
+    if (e.status === "Verworfen" && e.verworfen_am) t.push(el("span", {text: "verworfen " + kurz(e.verworfen_am)}));
+    if (imDetail) {
+      if (e.seit) t.push(el("span", {text: "seit " + kurz(e.seit)}));
+      if (e.zuletzt) t.push(el("span", {text: "zuletzt " + kurz(e.zuletzt)}));
+      t.push(el("span", {class: "kid", text: "^" + e.id}));
+    }
+    return t;
+  }
+
+  function karte(e) {
+    const info = frageInfo(e), zu = BM.ZU(e.status);
+    const cls = "karte" + (e.ab && e.ab > heute() && !zu ? " spaeter" : "") + (e.status === "Erledigt" ? " zu" : "") + (e.status === "Verworfen" ? " zu verworfen" : "");
+    const k = el("div", {class: cls, tabindex: "0", role: "button", "data-id": e.id, "aria-label": e.text,
+      onclick: () => detail(e.id), onkeydown: (ev) => { if (ev.key === "Enter" && ev.target === k) detail(e.id); }});
+    const reihe = el("div", {class: "kreihe"});
+    if (!zu && e.status !== "Zurückgestellt") {
+      reihe.append(el("button", {type: "button", class: "stern" + (e.fokus ? " an" : ""), "aria-label": e.fokus ? "Stern entfernen" : "Stern setzen",
+        title: "Fokus", text: e.fokus ? "★" : "☆", onclick: (ev) => { ev.stopPropagation(); sternUm(e.id); }}));
+    }
+    reihe.append(el("div", {class: "kinhalt"}, el("div", {class: "ktext", text: e.text}), el("div", {class: "meta"}, metaTeile(e, info, false))));
+    if (!zu) reihe.append(el("button", {type: "button", class: "haken", "aria-label": "Erledigt", title: "Erledigt", text: "✓",
+      onclick: (ev) => { ev.stopPropagation(); haken(e.id); }}));
+    k.append(reihe);
+    return k;
+  }
+
+  // ------------------------------------------------------------------ Aktionen
+  function sternUm(id) {
+    return mitEintrag(id, (e, m) => {
+      if (e.fokus) { e.fokus = ""; return e; }
+      if (m.eintraege.filter(x => x.fokus).length >= BM.FOKUS_MAX) { hinweis("Höchstens " + BM.FOKUS_MAX + " Sterne. Erst einen anderen entfernen."); return false; }
+      e.fokus = heute();
+      return e;
+    });
+  }
+  function haken(id) {
+    const vorher = zustand.m.eintraege.find(x => x.id === id);
+    const alt = vorher ? {...vorher} : null;
+    return mitEintrag(id, e => { e._neuAb = BM.abhaken(e, heute()); return e; }, (e) => {
+      const r = alt ? {text: "Rückgängig", tun: () => mitEintrag(id, x => { Object.assign(x, alt); }, "Zurückgenommen")} : null;
+      hinweis(e._neuAb ? "Erledigt. Nächstes Mal ab " + kurz(e._neuAb) + "." : "Erledigt.", r);
+      ebeneWeg();
+    });
+  }
+
+  // ------------------------------------------------------------------ Ebenen (Popup) und Menue
+  function ebeneZeigen(panel) {
+    const eb = $("ebene");
+    eb.replaceChildren(panel);
+    if (eb.hidden) {
+      eb.hidden = false;
+      document.body.classList.add("still");
+      if (!(history.state && history.state.ebene)) try { history.pushState({ebene: 1}, ""); } catch (e) { /* file:// */ }
+    }
+    const f = panel.querySelector("[autofocus]") || panel.querySelector(".zu-btn");
+    if (f) f.focus({preventScroll: true});
+  }
+  function ebeneWeg() {
+    const eb = $("ebene");
+    if (eb.hidden) return;
+    eb.hidden = true;
+    eb.replaceChildren();
+    document.body.classList.remove("still");
+    zustand.detailId = "";
+    if (eb._fertig) { const f = eb._fertig; eb._fertig = null; f(""); }
+  }
+  function ebeneZu() {
+    if (history.state && history.state.ebene) history.back(); else ebeneWeg();
+  }
+  window.addEventListener("popstate", () => { ebeneWeg(); menuZu(); });
+  $("ebene").addEventListener("click", (ev) => { if (ev.target === $("ebene")) ebeneZu(); });
+
+  function panel(titel, inhalt, schmal) {
+    return el("div", {class: "panel" + (schmal ? " schmal" : ""), role: "dialog", "aria-modal": "true", "aria-label": titel},
+      el("div", {class: "pkopf"}, el("h3", {text: titel}), el("button", {type: "button", class: "zu-btn", "aria-label": "Schließen", text: "✕", onclick: ebeneZu})),
+      inhalt);
+  }
+  function frage(titel, text, knoepfe) {
+    return new Promise(ok => {
+      const p = panel(titel, [el("p", {text}), el("div", {class: "knoepfe"}, knoepfe.map(([t, w], i) =>
+        el("button", {type: "button", class: i === 0 ? "speichern" : "", text: t, onclick: () => { const eb = $("ebene"); eb._fertig = null; ebeneZu(); ok(w); }})))], true);
+      ebeneZeigen(p);
+      $("ebene")._fertig = ok;
+    });
+  }
+
+  function menuZu() { $("menu").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false"); }
+  function menuAuf() {
+    const m = $("menu"), punkte = [];
+    const knopf = (t, f) => el("button", {type: "button", role: "menuitem", text: t, onclick: () => { menuZu(); f(); }});
+    const ort = !Q ? "" : Q.art === "handle" ? "Datei: " + Q.name + " (direkt gespeichert)" : Q.art === "server" ? "Datei auf Deinem PC über das eigene Netz"
+      : Q.beispiel ? "Beispiel, nur in diesem Browser" : "Kopie von " + Q.name + " in diesem Browser";
+    punkte.push(el("div", {class: "mtext", text: ort}));
+    if (!SERVER) {
+      punkte.push(knopf("Andere Datei öffnen …", oeffnen));
+      punkte.push(knopf("Neues Board anlegen …", anlegen));
+    }
+    punkte.push(knopf("Einrichtung: Namen, Projekte, Prompt …", () => einrichtung(false)));
+    punkte.push(knopf("Wer bin ich? (" + (ich() || "nicht gewählt") + ")", waehleIch));
+    punkte.push(el("hr"));
+    punkte.push(knopf("Herunterladen (Sicherung)", herunterladen));
+    if (Q && Q.art === "kopie" && navigator.canShare) punkte.push(knopf("Datei teilen …", teilen));
+    punkte.push(knopf("Prompt für Deine KI kopieren", promptZeigen));
+    punkte.push(el("a", {href: "handy.html", target: "_blank", rel: "noopener", role: "menuitem", text: "Handy anbinden (VPN) ↗"}));
+    if (!SERVER) { punkte.push(el("hr")); punkte.push(knopf("Board schließen", () => schliessen(false))); }
+    m.replaceChildren(...punkte);
+    m.hidden = false;
+    $("menuBtn").setAttribute("aria-expanded", "true");
+    const erster = m.querySelector("button");
+    if (erster) erster.focus({preventScroll: true});
+  }
+  $("menuBtn").addEventListener("click", (ev) => { ev.stopPropagation(); $("menu").hidden ? menuAuf() : menuZu(); });
+  document.addEventListener("click", (ev) => { if (!$("menu").hidden && !$("menu").contains(ev.target)) menuZu(); });
+
+  // ------------------------------------------------------------------ Detail
+  function detail(id) {
+    const e = zustand.m && zustand.m.eintraege.find(x => x.id === id);
+    if (!e) return;
+    zustand.detailId = id;
+    const info = frageInfo(e), zu = BM.ZU(e.status);
+    const inhalt = [];
+    inhalt.push(el("div", {class: "dtext", text: e.text}));
+    inhalt.push(el("div", {class: "meta"}, metaTeile(e, info, true)));
+    if (e.beschreibung) inhalt.push(el("div", {class: "dlabel", text: "Beschreibung"}), el("p", {class: "dbeschr"}, mitLinks(e.beschreibung)));
+    if (info) inhalt.push(frageBox(e, info));
+    if (e.notiz) inhalt.push(el("div", {class: "dlabel", text: "Notiz"}), el("div", {class: "dnotiz"}, mitLinks(e.notiz)));
+    const haupt = el("div", {class: "dhaupt"},
+      el("button", {type: "button", text: "Bearbeiten", onclick: () => formular(e)}),
+      !zu && e.status !== "Zurückgestellt" ? el("button", {type: "button", text: e.fokus ? "★ Stern weg" : "☆ Stern", onclick: () => sternUm(id).then(r => r && detail(id))}) : null,
+      zu ? el("button", {type: "button", class: "erl", text: "Wieder öffnen", onclick: () => mitEintrag(id, x => { x.status = "Offen"; }, "Wieder offen").then(r => r && detail(id))})
+        : el("button", {type: "button", class: "erl", text: "✓ Erledigt", onclick: () => haken(id)}));
+    inhalt.push(haupt);
+    const klein = el("div", {class: "dklein"});
+    if (!zu) {
+      klein.append(el("div", {class: "mlabel", text: "Verschieben (ab wann wieder sichtbar)"}),
+        el("div", {class: "mreihe"}, [["+1 Tag", "1t"], ["+1 Woche", "1w"], ["+1 Monat", "1m"]].map(([t, um]) =>
+          el("button", {type: "button", text: t, onclick: () => mitEintrag(id, x => { BM.verschieben(x, um, heute()); }, (x) => { hinweis("Verschoben auf " + kurz(x.ab) + "."); detail(id); })}))));
+    }
+    klein.append(el("div", {class: "mlabel", text: "Status"}),
+      el("div", {class: "mreihe"}, BM.STATUS.map(s => el("button", {type: "button", class: s === e.status ? "an" : "", text: s,
+        onclick: () => s !== e.status && mitEintrag(id, x => { x.status = s; }, "Status: " + s).then(r => r && detail(id))}))));
+    const weg = el("button", {type: "button", class: "weg", text: "Löschen"});
+    weg.addEventListener("click", () => {
+      if (!weg.classList.contains("sicher")) { weg.classList.add("sicher"); weg.textContent = "Wirklich löschen? Nochmal tippen"; return; }
+      aendern(m => { const i = m.eintraege.findIndex(x => x.id === id); if (i < 0) return false; m.eintraege.splice(i, 1); return true; }, "Gelöscht").then(r => r && ebeneZu());
+    });
+    klein.append(el("div", {class: "mlabel", text: "Lieber „Verworfen“ als löschen: dann bleibt nachvollziehbar, was nicht gemacht wurde."}), el("div", {class: "mreihe"}, weg));
+    inhalt.push(klein);
+    const p = panel("", inhalt);
+    p.querySelector("h3").replaceWith(el("span", {class: "pstatus", text: e.status + " · ^" + e.id}));
+    ebeneZeigen(p);
+  }
+
+  function antwortZiel() {
+    const n = namen().filter(x => !gleich(x, ich()));
+    return n.find(x => KI_NAMEN.test(x)) || n[0] || "";
+  }
+  function frageBox(e, info) {
+    const box = el("div", {class: "fdbox"});
+    box.append(el("div", {class: "dlabel", text: "Frage an Dich"}));
+    if (info.frage) box.append(el("div", {class: "frage", text: info.frage}));
+    if (info.empf) box.append(el("div", {class: "empf", text: "Empfehlung: " + info.empf}));
+    const wahl = {};
+    if (info.liste.length) {
+      const liste = el("div", {class: "entliste"});
+      const ents = info.liste.map(p => {
+        const d = el("div", {class: "ent"});
+        const anm = el("input", {type: "text", placeholder: "Anmerkung (optional)", "aria-label": "Anmerkung zu " + p.schluessel});
+        const kn = el("div", {class: "entkn"});
+        const werte = p.optionen.length ? p.optionen.map(o => o[0]) : ["ja", "nein"];
+        const zeichne = () => {
+          d.className = "ent" + (wahl[p.schluessel] ? " ok" : "") + (wahl[p.schluessel] === "nein" ? " nein" : "");
+          for (const b of kn.querySelectorAll("button")) {
+            const w = b.dataset.w;
+            b.className = (w === wahl[p.schluessel] ? "an" : "") + (w === "nein" ? " nein" : "") + (w === p.empfWahl ? " empfk" : "");
+          }
+        };
+        for (const w of werte) kn.append(el("button", {type: "button", "data-w": w, text: w, onclick: () => { wahl[p.schluessel] = wahl[p.schluessel] === w ? "" : w; zeichne(); }}));
+        kn.append(anm);
+        d.append(el("div", {class: "enttext"}, el("span", {class: "entk", text: p.schluessel}), p.text || "",
+          p.empf ? el("span", {class: "entempf", text: " (Empfehlung: " + p.empf + ")"}) : null));
+        for (const [b, t] of p.optionen) d.append(el("div", {class: "entopt"}, el("b", {text: b}), " " + t));
+        d.append(kn);
+        p._anm = anm;
+        p._zeichne = zeichne;
+        zeichne();
+        return d;
+      });
+      liste.append(...ents);
+      box.append(liste);
+    }
+    const ta = el("textarea", {placeholder: info.liste.length ? "Zusatz für alle (optional)" : "Antwort oder Ergänzung (optional)", "aria-label": "Antwort"});
+    box.append(ta);
+    const ziele = namen().filter(x => !gleich(x, ich()));
+    const sel = el("select", {"aria-label": "Zurück an"}, el("option", {value: "", text: "@" + (e.wer || "niemand") + " bleibt"}),
+      ziele.map(z => el("option", {value: z, text: "zurück an @" + z})));
+    sel.value = antwortZiel();
+    if (ziele.length) box.append(el("label", {text: "Danach zuständig"}), sel);
+    const fehlt = el("div", {class: "fehltext", hidden: true});
+    const kn = el("div", {class: "dhaupt"});
+    const zeile = () => {
+      const teile = [];
+      for (const p of info.liste) {
+        const w = wahl[p.schluessel], a = p._anm.value.trim();
+        if (w) teile.push(p.schluessel + " " + w + (a ? " (" + a + ")" : ""));
+        else if (a) teile.push(p.schluessel + " offen: " + a);
+      }
+      return teile;
+    };
+    const antworten = (text) => {
+      const ziel = sel.value;
+      mitEintrag(e.id, x => {
+        x.notiz = (x.notiz ? x.notiz + "\n" : "") + ich() + " " + stempel() + " (Board): " + BM.einzeilig(text);
+        if (ziel) { x.wer = ziel; if (KI_NAMEN.test(ziel)) x.allein = true; }
+        if (x.ab && x.ab > heute()) x.ab = "";
+        if (x.status === "Wartet auf" || x.status === "Zurückgestellt") x.status = "Offen";
+      }, "Antwort gespeichert").then(r => r && ebeneZu());
+    };
+    if (info.liste.length) {
+      kn.append(el("button", {type: "button", text: "Rest wie empfohlen", onclick: () => {
+        for (const p of info.liste) if (!wahl[p.schluessel] && p.empfWahl) { wahl[p.schluessel] = p.empfWahl; p._zeichne(); }
+      }}));
+      kn.append(el("button", {type: "button", class: "allesend", text: "Alle senden", onclick: () => {
+        const t = zeile();
+        const offen = info.liste.filter(p => !wahl[p.schluessel]).map(p => p.schluessel);
+        if (!t.length && !ta.value.trim()) { fehlt.textContent = "Noch nichts gewählt."; fehlt.hidden = false; return; }
+        antworten(t.join(", ") + (offen.length && !t.some(s => s.includes(" offen:")) ? (t.length ? ", " : "") + offen.join(", ") + " offen" : "") + (ta.value.trim() ? ". " + ta.value.trim() : ""));
+      }}));
+    } else {
+      kn.append(el("button", {type: "button", class: "passt", text: "Passt", onclick: () => antworten("Passt." + (ta.value.trim() ? " " + ta.value.trim() : ""))}));
+    }
+    kn.append(el("button", {type: "button", text: "Nur als Notiz", title: "Schreibt Deinen Text in die Notiz, die Frage bleibt offen", onclick: () => {
+      const t = [...zeile(), ta.value.trim()].filter(Boolean).join(", ");
+      if (!t) { fehlt.textContent = "Erst etwas schreiben."; fehlt.hidden = false; return; }
+      mitEintrag(e.id, x => { x.notiz = (x.notiz ? x.notiz + "\n" : "") + ich() + " " + stempel() + " (Board, Notiz): " + BM.einzeilig(t); }, "Notiz gespeichert")
+        .then(r => r && detail(e.id));
+    }}));
+    box.append(kn, fehlt);
+    return box;
+  }
+
+  // ------------------------------------------------------------------ Formular Neu / Bearbeiten
+  function datalist(id, werte) { return el("datalist", {id}, werte.map(w => el("option", {value: w}))); }
+  function formular(e) {
+    const neu = !e;
+    const v = e ? {...e} : {...BM.leer("Offen"), wer: ich()};
+    const f = {
+      text: el("input", {type: "text", value: v.text, autofocus: true, "aria-label": "Titel", maxlength: "2000"}),
+      beschreibung: el("textarea", {value: v.beschreibung, "aria-label": "Beschreibung"}),
+      projekt: el("input", {type: "text", value: v.projekt, list: "dlProj", autocomplete: "off", "aria-label": "Projekt"}),
+      wer: el("input", {type: "text", value: v.wer, list: "dlWer", autocomplete: "off", "aria-label": "Wer"}),
+      status: el("select", {"aria-label": "Status"}, BM.STATUS.map(s => el("option", {value: s, text: s}))),
+      aufwand: el("select", {"aria-label": "Aufwand"}, el("option", {value: "", text: "keine Angabe"}), BM.AUFWAND.map(a => el("option", {value: a, text: AUFWAND_TEXT[a]}))),
+      ab: el("input", {type: "date", value: v.ab, "aria-label": "Ab"}),
+      frist: el("input", {type: "date", value: v.frist, "aria-label": "Frist"}),
+      alle: el("select", {"aria-label": "Wiederholen"}, el("option", {value: "", text: "nicht"}), Object.keys(ALLE_TEXT).map(a => el("option", {value: a, text: ALLE_TEXT[a]}))),
+      allein: el("input", {type: "checkbox", checked: v.allein}),
+      notiz: el("textarea", {value: v.notiz, class: "gross", "aria-label": "Notiz"}),
+    };
+    f.status.value = v.status;
+    f.aufwand.value = v.aufwand;
+    if (v.alle && !ALLE_TEXT[v.alle]) f.alle.append(el("option", {value: v.alle, text: alleText(v.alle)}));
+    f.alle.value = v.alle;
+    const fehlt = el("div", {class: "fehltext", hidden: true});
+    const lies = () => ({
+      text: BM.einzeilig(f.text.value), beschreibung: BM.mehrzeilig(f.beschreibung.value),
+      projekt: f.projekt.value.trim().replace(/^#/, "").toLowerCase(), wer: BM.einzeilig(f.wer.value).replace(/^@/, ""),
+      status: f.status.value, aufwand: f.aufwand.value, ab: f.ab.value, frist: f.frist.value, alle: f.alle.value,
+      allein: f.allein.checked, notiz: BM.mehrzeilig(f.notiz.value),
+    });
+    const alt = lies();
+    const speichern = () => {
+      const w = lies();
+      if (!w.text) { fehlt.textContent = "Bitte einen Titel eingeben."; fehlt.hidden = false; f.text.focus(); return; }
+      if (w.projekt && !BM.PROJ_RE.test("#" + w.projekt)) { fehlt.textContent = "Projekt nur aus Buchstaben, Ziffern, - und _ (mit Buchstabe vorn)."; fehlt.hidden = false; return; }
+      const kuerzen = (x) => {
+        if (x.text.length > BM.TITEL_LANG) { x.beschreibung = x.text + (x.beschreibung ? "\n" + x.beschreibung : ""); x.text = BM.titelKurz(x.text); }
+      };
+      if (neu) {
+        aendern(m => {
+          const x = Object.assign(BM.leer(w.status), w, {seit: heute()});
+          kuerzen(x);
+          m.eintraege.unshift(x);
+          return x;
+        }, "Angelegt").then(x => { if (x) { zustand.tab = x.status; ebeneWeg(); render(); } });
+      } else {
+        mitEintrag(e.id, x => {
+          for (const k of Object.keys(w)) if (w[k] !== alt[k]) x[k] = w[k];
+          kuerzen(x);
+        }, "Gespeichert").then(r => r && detail(e.id));
+      }
+    };
+    const feld = (t, x) => [el("label", {text: t}), x];
+    const inhalt = el("form", {onsubmit: (ev) => { ev.preventDefault(); speichern(); }},
+      feld("Titel", f.text),
+      feld("Beschreibung", f.beschreibung),
+      el("div", {class: "zeile2"}, el("div", null, feld("Projekt", f.projekt)), el("div", null, feld("Wer (zuständig)", f.wer))),
+      datalist("dlProj", projekte()), datalist("dlWer", namen()),
+      el("div", {class: "zeile2"}, el("div", null, feld("Status", f.status)), el("div", null, feld("Aufwand", f.aufwand))),
+      el("div", {class: "zeile2"}, el("div", null, feld("Ab (vorher ausgeblendet)", f.ab)), el("div", null, feld("Frist", f.frist))),
+      feld("Wiederholen", f.alle),
+      el("label", {class: "haekchen"}, f.allein, "Allein machbar (ohne Rückfrage)"),
+      feld("Notiz", f.notiz),
+      fehlt,
+      el("div", {class: "knoepfe"}, el("button", {type: "submit", class: "speichern", text: neu ? "Anlegen" : "Speichern"}),
+        el("button", {type: "button", text: "Abbrechen", onclick: () => neu ? ebeneZu() : detail(e.id)})));
+    ebeneZeigen(panel(neu ? "Neue Aufgabe" : "Bearbeiten", inhalt));
+  }
+
+  // ------------------------------------------------------------------ Einrichtung (schreibt in den Kopf der Datei)
+  function standardPrompt(namenListe) {
+    const n = namenListe.filter(x => !KI_NAMEN.test(x));
+    const ki = namenListe.find(x => KI_NAMEN.test(x)) || "KI";
+    const wer = n[0] || "NAME";
+    return [
+      "Du hilfst " + (n.length ? n.join(" und ") : "mir") + " mit dieser Aufgabenliste (Board-Datei im Markdown-Format).",
+      "Bearbeite nur Aufgaben mit @" + ki + ". Schreibe Deinen Stand als eingerückte Zeile unter die Aufgabe, mit Datum.",
+      "Brauchst Du eine Entscheidung, schreibe eine Zeile „BRAUCHT " + wer.toUpperCase() + ": Frage. Empfehlung: Dein Tipp“ und setze @" + wer + ".",
+      "Mehrere Entscheidungen: je Zeile „E1 Frage (Empfehlung)“, Auswahl als „a …; b …“.",
+      "Lösche nichts. Erledigtes bekommt [x] und steht unter „## Erledigt“.",
+    ].join("\n");
+  }
+  function einrichtung(neuesBoard, fertig) {
+    const c = cfg();
+    const f = {
+      titel: el("input", {type: "text", value: c.titel || (neuesBoard && Q ? Q.name.replace(/\.(md|markdown|txt)$/i, "") : ""), autofocus: true, placeholder: "z. B. Familie Muster"}),
+      namen: el("input", {type: "text", value: c.namen.join(", "), placeholder: "z. B. Anna, Ben, KI"}),
+      ich: el("input", {type: "text", value: ich(), list: "dlIch", placeholder: "Dein Name aus der Liste"}),
+      projekte: el("input", {type: "text", value: c.projekte.join(", "), placeholder: "z. B. haushalt, garten, arbeit"}),
+      prompt: el("textarea", {class: "gross", value: c.prompt}),
+    };
+    const dl = el("datalist", {id: "dlIch"});
+    const dlNeu = () => dl.replaceChildren(...BM.liste(f.namen.value).map(n => el("option", {value: n})));
+    f.namen.addEventListener("input", dlNeu);
+    dlNeu();
+    const vorschlag = el("button", {type: "button", text: "Vorschlag einsetzen", onclick: () => { f.prompt.value = standardPrompt(BM.liste(f.namen.value)); }});
+    const fehlt = el("div", {class: "fehltext", hidden: true});
+    const speichern = () => {
+      const projekteWerte = BM.liste(f.projekte.value).map(p => p.toLowerCase());
+      const falsch = projekteWerte.find(p => !BM.PROJ_RE.test("#" + p));
+      if (falsch) { fehlt.textContent = "„" + falsch + "“ geht nicht als Projekt: nur Buchstaben, Ziffern, - und _ (mit Buchstabe vorn), keine Leerzeichen."; fehlt.hidden = false; return; }
+      const neu = {titel: BM.einzeilig(f.titel.value), namen: BM.liste(f.namen.value), projekte: projekteWerte, prompt: f.prompt.value.trim()};
+      LS.set("ich", BM.einzeilig(f.ich.value));
+      aendern(m => { m.kopf = BM.kopfSchreiben(m.kopf, neu); m.cfg = BM.kopfLesen(m.kopf); return true; }, "Einrichtung gespeichert")
+        .then(r => { if (r) { ebeneWeg(); if (fertig) fertig(); } });
+    };
+    const feld = (t, x, hilfe) => [el("label", {text: t}), x, hilfe ? el("p", {class: "hilfe", text: hilfe}) : null];
+    const inhalt = el("form", {onsubmit: (ev) => { ev.preventDefault(); speichern(); }},
+      el("p", {class: "hilfe", text: "Das steht danach oben in Deiner Datei. Du kannst es dort auch von Hand ändern."}),
+      feld("Name des Boards", f.titel),
+      feld("Namen (mit Komma getrennt)", f.namen, "Alle, die Aufgaben bekommen. Auch Deine KI, z. B. „KI“."),
+      feld("Wer bin ich auf diesem Gerät?", f.ich, "Wird nur in diesem Browser gemerkt, nicht in der Datei."), dl,
+      feld("Projekte (mit Komma getrennt)", f.projekte, "Kleinbuchstaben ohne Leerzeichen. In Aufgaben als #projekt."),
+      feld("Prompt für Deine KI", f.prompt, "Arbeitsanweisung für eine KI, die die Datei mitbearbeitet. Steht in der Datei unter „### Prompt“."),
+      el("div", {class: "mreihe"}, vorschlag),
+      fehlt,
+      el("div", {class: "knoepfe"}, el("button", {type: "submit", class: "speichern", text: "In die Datei schreiben"}),
+        el("button", {type: "button", text: "Abbrechen", onclick: ebeneZu})));
+    if (neuesBoard && !f.prompt.value) f.prompt.value = standardPrompt(c.namen);
+    ebeneZeigen(panel(neuesBoard ? "Neues Board einrichten" : "Einrichtung", inhalt));
+  }
+
+  function waehleIch() {
+    const n = namen();
+    const eingabe = el("input", {type: "text", value: ich(), list: "dlIch2", autofocus: true});
+    const inhalt = el("form", {onsubmit: (ev) => { ev.preventDefault(); LS.set("ich", BM.einzeilig(eingabe.value)); ebeneZu(); render(); }},
+      el("p", {class: "hilfe", text: "Damit die Maske Fragen an Dich erkennt („BRAUCHT NAME: …“). Wird nur in diesem Browser gemerkt."}),
+      n.length ? el("div", {class: "mreihe"}, n.map(x => el("button", {type: "button", text: x, onclick: () => { LS.set("ich", x); ebeneZu(); render(); }}))) : null,
+      el("label", {text: "Oder Name eingeben"}), eingabe, datalist("dlIch2", n),
+      el("div", {class: "knoepfe"}, el("button", {type: "submit", class: "speichern", text: "Übernehmen"})));
+    ebeneZeigen(panel("Wer bist Du?", inhalt, true));
+  }
+
+  // ------------------------------------------------------------------ Prompt fuer die KI
+  const FORMAT_HILFE = [
+    "So ist die Datei aufgebaut (bitte genau so schreiben, sonst kann die Board-Maske sie nicht lesen):",
+    "- Abschnitte als Überschriften: ## Offen, ## Wartet auf, ## Zurückgestellt, ## Erledigt, ## Verworfen.",
+    "- Eine Aufgabe ist eine Zeile: - [ ] Titel #projekt @wer allein:ja alle:1w aufwand:u30m ab:JJJJ-MM-TT frist:JJJJ-MM-TT seit:JJJJ-MM-TT ^id",
+    "  Nur Titel und ^id sind Pflicht. ^id sind 6 Zeichen 0-9a-f und bleiben immer gleich. Neue Aufgaben ohne ^id ergänzt die Maske selbst.",
+    "  aufwand: u5m, u30m, u2h oder ab2h. alle: Zahl plus t, w, m oder j (wiederholen). fokus:JJJJ-MM-TT ist der Stern.",
+    "- Erledigt: - [x] ... erledigt:JJJJ-MM-TT unter ## Erledigt. Verworfen: - [-] ... verworfen:JJJJ-MM-TT unter ## Verworfen.",
+    "- Darunter eingerückt (zwei Leerzeichen): zuerst Zeilen „Beschreibung: …“, dann die Notiz, Zeile für Zeile.",
+    "- Fragen an einen Menschen als Notizzeile: BRAUCHT NAME: Frage. Empfehlung: Tipp. Die Antwort kommt als Zeile „Name TT.MM. HH:MM (Board): …“.",
+    "- Mehrere Entscheidungen darunter je Zeile: E1 Frage (Empfehlung). Mit Auswahl: E2 Thema: a Option; b Option (b).",
+    "- Alles über der ersten ##-Überschrift ist der Kopf (Name, Namen:, Projekte:, ### Prompt). Nichts löschen, was Du nicht verstehst.",
+  ].join("\n");
+  function promptText() {
+    const c = cfg();
+    return (c.prompt ? c.prompt + "\n\n" : "") + "Die Datei heißt " + (Q ? Q.name : "board.md") + ".\n" + FORMAT_HILFE;
+  }
+  function promptZeigen() {
+    const text = promptText();
+    const pre = el("pre", {class: "prompt", text});
+    const kopieren = el("button", {type: "button", class: "speichern", text: "Kopieren", onclick: async () => {
+      try { await navigator.clipboard.writeText(text); hinweis("Prompt kopiert."); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); hinweis("Text ist markiert: jetzt Strg+C bzw. Kopieren."); }
+    }});
+    ebeneZeigen(panel("Prompt für Deine KI", [el("p", {class: "hilfe", text: "Gib diesen Text Deiner KI (z. B. einem Coding-Assistenten mit Zugriff auf die Datei). Der erste Teil kommt aus Deiner Einrichtung, der Rest erklärt das Format."}),
+      pre, el("div", {class: "knoepfe"}, kopieren)]));
+  }
+
+  // ------------------------------------------------------------------ Dateien
+  async function vorWechsel() {
+    if (Q && Q.art === "kopie" && Q.ungesichert) {
+      const w = await frage("Noch nicht gesichert", "Deine Änderungen an „" + Q.name + "“ stehen nur in diesem Browser. Erst herunterladen?",
+        [["Herunterladen", "laden"], ["Ohne Sichern weiter", "weiter"], ["Abbrechen", ""]]);
+      if (w === "laden") { await herunterladen(); return true; }
+      return w === "weiter";
+    }
+    return true;
+  }
+  async function oeffnen() {
+    if (!(await vorWechsel())) return;
+    if (KANN_DATEI) {
+      let h;
+      try {
+        [h] = await window.showOpenFilePicker({multiple: false, types: [{description: "Board (Markdown)", accept: {"text/markdown": [".md", ".markdown"], "text/plain": [".txt"]}}]});
+      } catch (e) { if (e.name !== "AbortError") fehler(e); return; }
+      try {
+        if ((await h.requestPermission({mode: "readwrite"})) !== "granted") { hinweis("Ohne Schreibrecht kann ich nichts speichern."); return; }
+        Q = {art: "handle", handle: h, name: h.name};
+        zustand.recht = true;
+        await DB.set("quelle", {art: "handle", handle: h, name: h.name});
+        await laden();
+      } catch (e) { fehler(e); }
+      return;
+    }
+    $("dateiWahl").value = "";
+    $("dateiWahl").click();
+  }
+  $("dateiWahl").addEventListener("change", async () => {
+    const d = $("dateiWahl").files[0];
+    if (!d) return;
+    try {
+      const text = await d.text();
+      await DB.set("kopie", {name: d.name, text, ungesichert: false});
+      Q = {art: "kopie", name: d.name, ungesichert: false};
+      await DB.set("quelle", {art: "kopie", name: d.name});
+      await laden();
+      hinweis("Arbeitskopie im Browser. Mit „Herunterladen“ sicherst Du sie wieder als Datei.");
+    } catch (e) { fehler(e); }
+  });
+
+  async function anlegen() {
+    if (!(await vorWechsel())) return;
+    const c = {titel: "", namen: [], projekte: [], prompt: ""};
+    zustand.m = {kopf: [], eintraege: [], frei: {}, cfg: c};
+    const f = {
+      titel: el("input", {type: "text", autofocus: true, placeholder: "z. B. Familie Muster"}),
+      namen: el("input", {type: "text", placeholder: "z. B. Anna, Ben, KI"}),
+      projekte: el("input", {type: "text", placeholder: "z. B. haushalt, garten, arbeit"}),
+    };
+    const fehlt = el("div", {class: "fehltext", hidden: true});
+    const los = async () => {
+      const projekteWerte = BM.liste(f.projekte.value).map(p => p.toLowerCase());
+      const falsch = projekteWerte.find(p => !BM.PROJ_RE.test("#" + p));
+      if (falsch) { fehlt.textContent = "„" + falsch + "“ geht nicht als Projekt (nur Buchstaben, Ziffern, - und _)."; fehlt.hidden = false; return; }
+      const namenWerte = BM.liste(f.namen.value);
+      const neu = {titel: BM.einzeilig(f.titel.value) || "Board", namen: namenWerte, projekte: projekteWerte, prompt: standardPrompt(namenWerte)};
+      const text = BM.neueDatei(neu);
+      const dateiname = (neu.titel.toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-|-$/g, "") || "board") + ".md";
+      if (namenWerte.length && !ich()) LS.set("ich", namenWerte[0]);
+      try {
+        if (typeof window.showSaveFilePicker === "function") {
+          let h;
+          try { h = await window.showSaveFilePicker({suggestedName: dateiname, types: [{description: "Board (Markdown)", accept: {"text/markdown": [".md"]}}]}); }
+          catch (e) { if (e.name === "AbortError") return; throw e; }
+          Q = {art: "handle", handle: h, name: h.name};
+          zustand.recht = true;
+          await quelleSchreiben(text);
+          await DB.set("quelle", {art: "handle", handle: h, name: h.name});
+        } else {
+          Q = {art: "kopie", name: dateiname, ungesichert: true};
+          await DB.set("kopie", {name: dateiname, text, ungesichert: true});
+          await DB.set("quelle", {art: "kopie", name: dateiname});
+        }
+        ebeneWeg();
+        await laden();
+        hinweis(Q.art === "handle" ? "Board angelegt: " + Q.name : "Board angelegt. Mit „Herunterladen“ bekommst Du die Datei.");
+      } catch (e) { fehler(e); }
+    };
+    const feld = (t, x, hilfe) => [el("label", {text: t}), x, hilfe ? el("p", {class: "hilfe", text: hilfe}) : null];
+    ebeneZeigen(panel("Neues Board", el("form", {onsubmit: (ev) => { ev.preventDefault(); los(); }},
+      feld("Name des Boards", f.titel),
+      feld("Namen (mit Komma getrennt)", f.namen, "Alle, die Aufgaben bekommen, auch Deine KI. Der erste Name bist Du."),
+      feld("Projekte (mit Komma getrennt)", f.projekte, "Kleinbuchstaben ohne Leerzeichen. Später jederzeit änderbar."),
+      el("p", {class: "hilfe", text: KANN_DATEI ? "Danach wählst Du, wo die Datei liegen soll." : "Dein Browser speichert die Datei zuerst nur intern; mit „Herunterladen“ bekommst Du sie."}),
+      fehlt,
+      el("div", {class: "knoepfe"}, el("button", {type: "submit", class: "speichern", text: "Board anlegen"}), el("button", {type: "button", text: "Abbrechen", onclick: ebeneZu})))));
+  }
+
+  async function herunterladen() {
+    try {
+      const text = await quelleLesen();
+      const url = URL.createObjectURL(new Blob([text], {type: "text/markdown;charset=utf-8"}));
+      const a = el("a", {href: url, download: (Q && Q.name) || "board.md"});
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      if (Q.art === "kopie" && !Q.beispiel) {
+        const k = await DB.get("kopie");
+        if (k) { k.ungesichert = false; await DB.set("kopie", k); }
+        Q.ungesichert = false;
+        renderSpeicher();
+      }
+    } catch (e) { fehler(e); }
+  }
+  async function teilen() {
+    try {
+      const text = await quelleLesen();
+      const datei = new File([text], Q.name || "board.md", {type: "text/markdown"});
+      if (!navigator.canShare({files: [datei]})) { hinweis("Teilen von Dateien geht in diesem Browser nicht. Bitte herunterladen."); return; }
+      await navigator.share({files: [datei], title: Q.name});
+      if (!Q.beispiel) { const k = await DB.get("kopie"); if (k) { k.ungesichert = false; await DB.set("kopie", k); } Q.ungesichert = false; renderSpeicher(); }
+    } catch (e) { if (e.name !== "AbortError") fehler(e); }
+  }
+  async function schliessen(still) {
+    if (!still && !(await vorWechsel())) return;
+    Q = null;
+    zustand.m = null;
+    await DB.del("quelle");
+    await DB.del("kopie");      // nichts vom Board bleibt im Browser zurueck
+    $("kopf").hidden = true;
+    $("spalten").hidden = true;
+    $("start").hidden = false;
+    document.title = "Board-Maske";
+    startZeigen();
+  }
+  async function beispiel() {
+    if (!(await vorWechsel())) return;
+    await DB.set("kopie", {name: "beispiel.md", text: BEISPIEL, ungesichert: false, beispiel: true});
+    await DB.set("quelle", {art: "kopie", name: "beispiel.md", beispiel: true});
+    Q = {art: "kopie", name: "beispiel.md", beispiel: true};
+    await laden();
+  }
+
+  $("speicherBtn").addEventListener("click", async () => {
+    if (!Q) return;
+    if (Q.art === "handle" && !zustand.recht) {
+      if (await rechtSichern(true)) { try { await laden(); } catch (e) { fehler(e); } }
+      return;
+    }
+    if (Q.art === "kopie" && Q.ungesichert) { herunterladen(); return; }
+    const text = Q.art === "handle" ? "Jede Änderung wird sofort in „" + Q.name + "“ gespeichert. Ändert jemand anderes die Datei (z. B. Deine KI), lädt die Maske sie nach ein paar Sekunden neu."
+      : Q.art === "server" ? "Die Datei liegt auf Deinem PC. Die Maske spricht nur mit dem kleinen Board-Dienst dort, über Dein eigenes Netz oder VPN."
+      : Q.beispiel ? "Das Beispiel steht nur in diesem Browser. Probier ruhig alles aus."
+      : "Dein Browser kann die Datei nicht direkt zurückschreiben. Die Maske arbeitet mit einer Kopie in diesem Browser. Mit „Herunterladen“ sicherst Du sie als Datei.";
+    const w = await frage("Wo wird gespeichert?", text, [["Gut", ""], ["Herunterladen (Sicherung)", "laden"]]);
+    if (w === "laden") herunterladen();
+  });
+  $("neuBtn").addEventListener("click", () => formular(null));
+  $("suche").addEventListener("input", () => { zustand.suche = $("suche").value; renderLeisten(); renderSpalten(); });
+  $("oeffnenBtn").addEventListener("click", oeffnen);
+  $("anlegenBtn").addEventListener("click", anlegen);
+  $("beispielBtn").addEventListener("click", beispiel);
+
+  document.addEventListener("keydown", (ev) => {
+    const inFeld = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+    if (ev.key === "Escape") { if (!$("menu").hidden) menuZu(); else if (!$("ebene").hidden) ebeneZu(); else if (inFeld) document.activeElement.blur(); return; }
+    if (inFeld || ev.ctrlKey || ev.metaKey || ev.altKey || !zustand.m || !$("ebene").hidden) return;
+    if (ev.key === "/") { ev.preventDefault(); $("suche").focus(); }
+    else if (ev.key === "n") { ev.preventDefault(); formular(null); }
+  });
+
+  // ------------------------------------------------------------------ Start
+  async function startZeigen() {
+    $("faehigkeit").textContent = KANN_DATEI
+      ? "Dein Browser kann die Datei direkt speichern: sie bleibt, wo sie ist, und jede Änderung landet sofort darin."
+      : "Dein Browser kann Dateien nicht direkt zurückschreiben (z. B. Firefox, Safari oder Chrome auf dem Handy). Die Maske arbeitet dann mit einer Kopie im Browser; mit „Herunterladen“ sicherst Du sie als Datei. Direkt speichern geht in Chrome oder Edge am PC.";
+    const box = $("weiterBox");
+    box.hidden = true;
+    box.replaceChildren();
+    const q = await DB.get("quelle");
+    if (!q) return;
+    if (q.art === "kopie") {
+      const k = await DB.get("kopie");
+      if (!k) return;
+      Q = {art: "kopie", name: k.name, ungesichert: !!k.ungesichert, beispiel: !!k.beispiel};
+      try { await laden(); } catch (e) { fehler(e); }
+      return;
+    }
+    if (q.art === "handle" && q.handle) {
+      const h = q.handle;
+      let r = "prompt";
+      try { r = await h.queryPermission({mode: "readwrite"}); } catch (e) { /* alter Browser */ }
+      if (r === "granted") { Q = {art: "handle", handle: h, name: h.name}; zustand.recht = true; try { await laden(); } catch (e) { fehler(e); } return; }
+      box.append(el("button", {type: "button", class: "gross", text: "Weiter mit „" + h.name + "“", onclick: async () => {
+        try {
+          if ((await h.requestPermission({mode: "readwrite"})) !== "granted") { hinweis("Ohne Erlaubnis kann ich die Datei nicht lesen."); return; }
+          Q = {art: "handle", handle: h, name: h.name};
+          zustand.recht = true;
+          await laden();
+        } catch (e) { fehler(e); }
+      }}));
+      box.hidden = false;
+    }
+  }
+
+  (async () => {
+    if (SERVER) {
+      Q = {art: "server", name: "board.md"};
+      try { await laden(); } catch (e) { fehler(e); }
+      return;
+    }
+    if (location.hash === "#beispiel") { await beispiel(); return; }
+    await startZeigen();
+  })();
+})();
+</script>
+</body>
+</html>

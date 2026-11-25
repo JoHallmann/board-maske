@@ -1,0 +1,25 @@
+# Beispiel fuer Apache, wenn die Board-Maske auf einem eigenen Webspace liegt.
+# Die Seiten tragen ihre CSP schon als <meta>; diese Kopfzeilen verstaerken das.
+# Die sha256-Werte stehen im <meta http-equiv="Content-Security-Policy"> der jeweiligen index.html.
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+  Header always set X-Frame-Options "DENY"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  # Strenge Grundregel fuer alles; die erlaubten Skripte und Stile kommen aus dem <meta> der Seite.
+  Header always set Content-Security-Policy "connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+</IfModule>
+
+# board.md-Dateien nie ausliefern, falls doch einmal eine im Ordner landet
+<FilesMatch "\.md$">
+  Require all denied
+</FilesMatch>
+<Files "beispiel.md">
+  Require all granted
+</Files>

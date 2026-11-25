@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="@@CSP@@">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1f5fad">
+<meta name="description" content="Board-Maske: Aufgaben-Board im Browser für Deine eigene Markdown-Datei. Ohne Konto, ohne Server, nichts verlässt Dein Gerät.">
+<title>Board-Maske @@VERSION@@</title>
+<style>@@CSS@@</style>
+</head>
+<body>
+<header id="kopf" hidden>
+  <div class="kopf">
+    <h1 id="titel">Board</h1>
+    <button class="neu" id="neuBtn" type="button">+ Neu</button>
+    <button class="sbtn" id="speicherBtn" type="button" title="Speicherstand"></button>
+    <button class="mbtn" id="menuBtn" type="button" aria-haspopup="true" aria-label="Menü">☰</button>
+    <input class="suche" id="suche" type="search" placeholder="Suchen (/) in Text, Notiz, #projekt, @wer, ^id" aria-label="Suchen" autocomplete="off">
+  </div>
+  <div class="leiste" id="chips" role="group" aria-label="Ansicht"></div>
+  <div class="leiste pleiste" id="pchips" role="group" aria-label="Nach Projekt filtern"></div>
+  <div class="aufwand" id="aufwand" role="group" aria-label="Nach Aufwand filtern"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+</header>
+<main id="haupt">
+  <section class="start" id="start">
+    <h1>Board-Maske <span class="ver">@@VERSION@@</span></h1>
+    <p class="lead">Ein Aufgaben-Board im Browser für <b>Deine eigene Markdown-Datei</b>. Kein Konto, kein Server, keine Einrichtung: Datei wählen und los.</p>
+    <div class="startknoepfe">
+      <button class="gross haupt" id="oeffnenBtn" type="button">Board-Datei öffnen</button>
+      <button class="gross" id="anlegenBtn" type="button">Neues Board anlegen</button>
+      <button class="gross leise" id="beispielBtn" type="button">Beispiel ansehen</button>
+    </div>
+    <div class="weiter" id="weiterBox" hidden></div>
+    <div class="info">
+      <h2>Nichts verlässt Dein Gerät</h2>
+      <p>Die Seite besteht nur aus dieser einen HTML-Datei. Eine Sicherheitsregel im Kopf der Seite
+        (<code>Content-Security-Policy: connect-src 'none'</code>) verbietet dem Browser jede Verbindung nach außen,
+        auch zum Anbieter der Seite. Deine Datei wird nur auf dem Gerät gelesen und geschrieben.</p>
+      <p><b>Selbst prüfen:</b> Entwicklertools öffnen (F12), Reiter <i>Netzwerk</i>: nach dem Laden der Seite
+        kommt keine Anfrage mehr dazu. Oder die Seite speichern (Strg+S) und offline als Datei öffnen, sie
+        funktioniert genauso.</p>
+      <p id="faehigkeit"></p>
+      <p><a href="handy.html">Handy anbinden (über Dein eigenes VPN)</a> · <a href="beispiel.md" download>Beispiel-Datei</a> · Version @@VERSION@@, Lizenz MIT</p>
+    </div>
+  </section>
+  <div class="spalten" id="spalten" hidden></div>
+</main>
+<div class="overlay" id="ebene" hidden></div>
+<div class="menu" id="menu" hidden role="menu"></div>
+<div class="hinweis" id="hinweis" hidden role="status"></div>
+<input type="file" id="dateiWahl" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+<script>@@JS@@</script>
+</body>
+</html>
