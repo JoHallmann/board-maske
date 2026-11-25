@@ -1,2 +1,3 @@
 freigegeben 2026-11-25 (Jonas, Board 1e3819: E1 ja, E2 ja)
 ergänzt 2026-11-25 um die optionale Claude-Anbindung, Standard aus (Jonas, Board 1e3819 16:59)
+ergänzt 2026-11-25 (Board 12015d): board_lokal.py liegt nicht mehr auf dem Webspace (Hoster führt .py aus, 500), nur im ZIP board-maske-v1.zip und auf GitHub; Links in handy.html und index.html umgestellt, Maske unverändert

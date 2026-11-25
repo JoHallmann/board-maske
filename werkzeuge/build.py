@@ -2,7 +2,10 @@
 """Baut eine Version der Board-Maske: python werkzeuge/build.py v1
 
 Ergebnis im Ordner <version>/: index.html (alles eingebettet), handy.html, beispiel.md, board_lokal.py, LICENSE,
-pruefsummen.txt. Dazu die Versionsuebersicht index.html im Wurzelordner.
+board-maske-<version>.zip (die fuenf Dateien, so entpackt laeuft der Dienst), pruefsummen.txt.
+Dazu die Versionsuebersicht index.html im Wurzelordner.
+WICHTIG beim Hochladen auf den Webspace: *.py NICHT hochladen. Der Hoster fuehrt .py als Skript aus (liefert 500);
+board_lokal.py gibt es dort nur im ZIP, im Netz sonst auf GitHub (raw).
 Die Content-Security-Policy erlaubt nur die eingebetteten Skripte und Stile (per SHA-256) und verbietet jede Verbindung.
 Eine freigegebene Version (Datei <version>/.freigegeben) wird nie neu gebaut: veroeffentlichte Links bleiben stabil.
 """
@@ -14,6 +17,7 @@ import os
 import re
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parent.parent
@@ -39,6 +43,20 @@ def atomar(pfad, inhalt):
     with os.fdopen(fd, "wb") as f:
         f.write(daten)
     os.replace(tmp, pfad)
+
+
+def paket(dateien, version):
+    """ZIP mit festen Zeitstempeln und fester Reihenfolge, damit die Pruefsumme stabil bleibt."""
+    import io
+    puffer = io.BytesIO()
+    with zipfile.ZipFile(puffer, "w", zipfile.ZIP_DEFLATED) as z:
+        for name in sorted(dateien):
+            inhalt = dateien[name]
+            info = zipfile.ZipInfo("board-maske-%s/%s" % (version, name), (2026, 11, 25, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            z.writestr(info, inhalt.encode("utf-8") if isinstance(inhalt, str) else inhalt)
+    return puffer.getvalue()
 
 
 def seite(vorlage, css, js, version):
@@ -79,8 +97,11 @@ def main():
     if not re.fullmatch(r"v\d+", version):
         sys.exit("Version wie v1, v2 …")
     ziel = WURZEL / version
-    if (ziel / ".freigegeben").exists():
-        sys.exit("%s ist freigegeben und wird nicht mehr verändert. Neue Version bauen (z. B. v%d)." % (version, int(version[1:]) + 1))
+    nachtrag = None
+    if "--nachtrag" in sys.argv:
+        nachtrag = sys.argv[sys.argv.index("--nachtrag") + 1]
+    if (ziel / ".freigegeben").exists() and not nachtrag:
+        sys.exit("%s ist freigegeben und wird nicht mehr verändert. Neue Version bauen (z. B. v%d), oder mit --nachtrag \"Text\" einen Nachtrag vermerken." % (version, int(version[1:]) + 1))
     css = (SRC / "board.css").read_text(encoding="utf-8")
     beispiel = (SRC / "beispiel.md").read_text(encoding="utf-8")
     js = ((SRC / "format.js").read_text(encoding="utf-8") + "\nconst BEISPIEL = "
@@ -97,6 +118,14 @@ def main():
     for name, inhalt in dateien.items():
         atomar(ziel / name, inhalt)
         summen.append("%s  %s" % (hashlib.sha256(inhalt.encode("utf-8")).hexdigest(), name))
+    zipname = "board-maske-%s.zip" % version
+    zipdaten = paket(dateien, version)
+    atomar(ziel / zipname, zipdaten)
+    summen.append("%s  %s" % (hashlib.sha256(zipdaten).hexdigest(), zipname))
+    if nachtrag:
+        marke = ziel / ".freigegeben"
+        alt = marke.read_text(encoding="utf-8") if marke.exists() else ""
+        atomar(marke, alt.rstrip("\n") + "\n" + nachtrag + "\n")
     atomar(ziel / "pruefsummen.txt", "\n".join(summen) + "\n")
     atomar(WURZEL / "index.html", uebersicht())
     groesse = (ziel / "index.html").stat().st_size

@@ -24,12 +24,12 @@ Open Source unter MIT-Lizenz. **Es gibt keinen Support.** Benutzung auf eigene V
 
 ### Am Handy mit der Datei auf dem PC
 
-`v1/handy.html` erklärt das und enthält einen Prompt zum Kopieren: Eine KI (Claude, ChatGPT o. ä.) richtet damit auf dem PC den kleinen Dienst `board_lokal.py` und ein VPN (Tailscale oder WireGuard) ein. Danach öffnet das Handy das Board über das VPN und schreibt direkt in die Datei auf dem PC. Nichts liegt offen im Internet, kein Port am Router.
+`v1/handy.html` erklärt das und enthält einen Prompt zum Kopieren: Eine KI (Claude, ChatGPT o. ä.) richtet damit auf dem PC den kleinen Dienst `board_lokal.py` (liegt im ZIP-Download `v1/board-maske-v1.zip` neben der `index.html`, den Code gibt es auch hier auf GitHub) und ein VPN (Tailscale oder WireGuard) ein. Danach öffnet das Handy das Board über das VPN und schreibt direkt in die Datei auf dem PC. Nichts liegt offen im Internet, kein Port am Router.
 
-Von Hand:
+Von Hand (im entpackten ZIP bzw. im Ordner `v1/` des Repos):
 
 ```
-python v1/board_lokal.py --datei /pfad/zu/board.md
+python board_lokal.py --datei /pfad/zu/board.md
 ```
 
 öffnet die Maske unter http://127.0.0.1:8790/. Mit `--inbox` nimmt der Dienst zusätzlich Dateien für die Claude-Inbox an (Ordner `inbox` neben der Board-Datei, je höchstens 25 MB, nichts wird überschrieben). Für das VPN `--host` auf die VPN-Adresse des PCs setzen (Tailscale-Netz 100.64.0.0/10 ist schon erlaubt, ein WireGuard-Netz mit `--erlaube 10.77.0.0/24`).
@@ -104,7 +104,8 @@ Die Maske lässt alles stehen, was sie nicht versteht: freie Zeilen, fremde Feld
 * Die Content-Security-Policy verbietet jede Netzverbindung (`connect-src 'none'`) und erlaubt nur die eingebetteten Skripte und Stile über ihre SHA-256-Summe. Nur die von `board_lokal.py` ausgelieferte Fassung darf mit genau diesem Dienst sprechen (`connect-src 'self'`).
 * Im Browser bleiben nur: der Zugriff auf die gewählte Datei bzw. die Kopie und, mit Claude-Anbindung, auf den Inbox-Ordner (IndexedDB) sowie Dein Name, eingeklappte Bereiche und ein angefangener Text an Claude (localStorage). **Board schließen** im Menü löscht Datei- und Ordnerzugriff und Kopie, das Löschen der Websitedaten im Browser entfernt alles.
 * Die Claude-Anbindung ändert daran nichts: auch dann baut die Seite keine Verbindung auf. Claude liest und schreibt die Datei auf Deinem Rechner.
-* `pruefsummen.txt` in jeder Version enthält die SHA-256-Summen der ausgelieferten Dateien.
+* `pruefsummen.txt` in jeder Version enthält die SHA-256-Summen der ausgelieferten Dateien und des ZIPs.
+* Auf dem Webspace liegt **keine** `.py`-Datei: Der Hoster würde sie als Skript ausführen (HTTP 500), und ein Server soll nie ein fremdes Skript ausführen. `board_lokal.py` gibt es nur im ZIP (`board-maske-v1.zip`) und hier auf GitHub.
 
 Wer die Seite selbst ablegt, kann die CSP zusätzlich als HTTP-Kopfzeile senden, siehe `beispiel.htaccess`.
 
@@ -112,12 +113,12 @@ Wer die Seite selbst ablegt, kann die CSP zusätzlich als HTTP-Kopfzeile senden,
 
 Jede Version liegt in ihrem eigenen Ordner (`v1/`, später `v2/` …); Links mit Versionsnummer bleiben stabil. Eine freigegebene Version trägt die Datei `.freigegeben`, das Bauskript verweigert dann den Neubau.
 
-Einzige Ausnahme bisher: v1 wurde am 25.11.2026 um die optionale Claude-Anbindung ergänzt (Standard aus). Bestehende Dateien und alle bisherigen Funktionen bleiben unverändert; neue Summen stehen in `pruefsummen.txt`.
+Ausnahmen bisher: v1 wurde am 25.11.2026 um die optionale Claude-Anbindung ergänzt (Standard aus) und am selben Tag so umgestellt, dass `board_lokal.py` nicht mehr auf dem Webspace liegt, sondern nur im ZIP und auf GitHub (Link-Änderung, keine Änderung der Maske). Bestehende Dateien und alle bisherigen Funktionen bleiben unverändert; neue Summen stehen in `pruefsummen.txt`.
 
 ## Bauen und testen
 
 ```
-python werkzeuge/build.py v1          # baut v1/ aus src/
+python werkzeuge/build.py v1          # baut v1/ aus src/ (mit ZIP); freigegebene Version nur mit --nachtrag "Text"
 python test/rundlauf.py               # Formatlogik: Rundlauf, Einrichtung, CRLF, fremde Wörter
 node test/browser.js v1 <bildordner>  # Edge/Chrome headless: Klickwege, Dienst, CSP, Netz, Bildschirmfotos
 ```

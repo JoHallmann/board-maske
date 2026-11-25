@@ -282,7 +282,7 @@ pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--f
 
   <h2>So funktioniert es</h2>
   <ol>
-    <li>Auf dem PC läuft ein kleiner Dienst: <code>board_lokal.py</code> (liegt im Download dieser Version, nur Python-Standardbibliothek, gut 250 Zeilen zum Selbstlesen).
+    <li>Auf dem PC läuft ein kleiner Dienst: <code>board_lokal.py</code> (liegt im <a href="board-maske-v1.zip">ZIP-Download dieser Version</a>, dort neben der <code>index.html</code>; zum Vorablesen auch <a href="https://github.com/JoHallmann/board-maske/blob/master/v1/board_lokal.py" rel="noreferrer">auf GitHub</a>; nur Python-Standardbibliothek, gut 250 Zeilen zum Selbstlesen).
       Er zeigt die Board-Maske an und liest und schreibt genau eine Datei: Deine Board-Datei.</li>
     <li>PC und Handy hängen im selben VPN, zum Beispiel <b>Tailscale</b> (einfach, kostenlos für Privatleute) oder <b>WireGuard</b> (ganz ohne fremden Dienst, etwas mehr Einrichtung).</li>
     <li>Auf dem Handy öffnest Du <code>http://&lt;VPN-Adresse des PCs&gt;:8790/</code> und legst die Seite auf den Startbildschirm.</li>
@@ -297,6 +297,7 @@ pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--f
 Gegeben:
 - Board-Datei: [PFAD ZUR BOARD-DATEI, z. B. C:\Users\ich\Dokumente\board.md]
 - Ordner der Board-Maske (entpackter Download, darin index.html und board_lokal.py): [PFAD ZUM ORDNER]
+  (Das ZIP liegt neben dieser Seite: board-maske-v1.zip, der Code auch auf https://github.com/JoHallmann/board-maske .)
 
 Schritte:
 1. Lies board_lokal.py vollständig und sag mir in drei Sätzen, was es tut, bevor Du es startest. Es darf nur die Standardbibliothek von Python 3 benutzen.
