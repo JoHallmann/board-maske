@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1ySeWHxws5QLj51d0u5f4wPh3aDJloHvfUIpoiIlvJk='; style-src 'sha256-drLavWhGcNlc98JqChtZd/UUlLefJst8i8Hd7tKpQOA='; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1ySeWHxws5QLj51d0u5f4wPh3aDJloHvfUIpoiIlvJk='; style-src 'sha256-xXlitJH9WOUv7WFyQeh4A9l+2MwNLAUm9EcQTv2ivJM='; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
@@ -37,6 +37,12 @@ header { position: sticky; top: 0; background: var(--bg); padding: 10px 12px 8px
 .sbtn.warn { border-color: var(--gelb); color: var(--gelb); font-weight: 600; }
 .sbtn.warn::before { content: "● "; }
 .sbtn.fehler { border-color: var(--rot); color: var(--rot); font-weight: 600; }
+.cbtn { border: 1px solid var(--rand); background: var(--karte); color: var(--leise); border-radius: 999px; padding: 5px 10px;
+  font-size: 12.5px; cursor: pointer; white-space: nowrap; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+.cbtn::before { content: "○ "; }
+.cbtn.on { color: var(--text); }
+.cbtn.on::before { content: "● "; color: var(--gruen); }
+.cbtn.neu { border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
 .suche { width: 100%; order: 9; font: inherit; font-size: 16px; padding: 7px 11px; border: 1px solid var(--rand);
   border-radius: 10px; background: var(--karte); color: var(--text); }
 .suche:focus { outline: 2px solid var(--akzent); outline-offset: -1px; }
@@ -246,6 +252,25 @@ pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--f
 .doku p, .doku li { font-size: 15px; line-height: 1.5; }
 .doku li { margin-bottom: 6px; }
 .doku pre.prompt { max-height: none; }
+/* Claude-Anbindung */
+.banner.claude { border-color: var(--akzent); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.banner.claude .btext { flex: 1 1 100%; overflow-wrap: anywhere; }
+.cstatus { display: flex; align-items: center; gap: 7px; font-size: 13.5px; margin: 8px 0; }
+.cpunkt { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--leise); flex: none; }
+.cpunkt.on { background: var(--gruen); border-color: var(--gruen); }
+.hilfe.grenze { border-left: 3px solid var(--gelb); padding-left: 8px; }
+.ablage { border: 2px dashed var(--rand); border-radius: 10px; padding: 14px; font-size: 13.5px; color: var(--leise); cursor: pointer; margin-bottom: 8px; }
+.ablage b { color: var(--text); }
+.ablage.drueber, .ablage:focus { border-color: var(--akzent); outline: none; }
+.kurzliste { display: flex; flex-direction: column; gap: 8px; }
+.kurz { border: 1px solid var(--rand); border-radius: 10px; padding: 8px 10px; background: var(--karte); }
+.kurz.ungelesen { border-color: var(--akzent); }
+.kurz .kmeta { font-size: 12px; color: var(--leise); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.kurz .kmeta.warte { margin-top: 4px; font-style: italic; }
+.kurz .ktxt { font-size: 14.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
+.kurz .antwort { margin-top: 6px; padding-left: 10px; border-left: 3px solid var(--gruen); }
+.kurz .mreihe { margin-top: 6px; }
+.klink { border: 0; background: none; color: var(--akzent); padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -257,7 +282,7 @@ pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--f
 
   <h2>So funktioniert es</h2>
   <ol>
-    <li>Auf dem PC läuft ein kleiner Dienst: <code>board_lokal.py</code> (liegt im Download dieser Version, nur Python-Standardbibliothek, gut 200 Zeilen zum Selbstlesen).
+    <li>Auf dem PC läuft ein kleiner Dienst: <code>board_lokal.py</code> (liegt im Download dieser Version, nur Python-Standardbibliothek, gut 250 Zeilen zum Selbstlesen).
       Er zeigt die Board-Maske an und liest und schreibt genau eine Datei: Deine Board-Datei.</li>
     <li>PC und Handy hängen im selben VPN, zum Beispiel <b>Tailscale</b> (einfach, kostenlos für Privatleute) oder <b>WireGuard</b> (ganz ohne fremden Dienst, etwas mehr Einrichtung).</li>
     <li>Auf dem Handy öffnest Du <code>http://&lt;VPN-Adresse des PCs&gt;:8790/</code> und legst die Seite auf den Startbildschirm.</li>
@@ -281,6 +306,7 @@ Schritte:
 4. Starte den Dienst testweise:
    python board_lokal.py --datei "[PFAD ZUR BOARD-DATEI]" --host &lt;VPN-IP des PCs&gt; --port 8790
    Bei WireGuard zusätzlich: --erlaube 10.77.0.0/24 (das WireGuard-Netz).
+   Nutze ich die Claude-Anbindung und will vom Handy Dateien in die Inbox legen, zusätzlich: --inbox (Ordner „inbox“ neben der Board-Datei).
 5. Teste mit curl von diesem PC: http://&lt;VPN-IP&gt;:8790/ muss die Seite liefern, /board.md den Inhalt der Datei.
 6. Firewall: Port 8790 nur für das VPN-Netz freigeben (Tailscale 100.64.0.0/10, sonst das WireGuard-Netz), nie für alle.
 7. Autostart beim Anmelden einrichten (Windows: Aufgabenplanung, macOS: launchd, Linux: systemd --user), ohne sichtbares Fenster.
@@ -297,6 +323,13 @@ Regeln:
   <p><code>100.x.y.z</code> ist die Tailscale-Adresse des PCs (<code>tailscale ip -4</code>). Nur am PC selbst reicht der Standard
     <code>--host 127.0.0.1</code>, dann öffnest Du <code>http://127.0.0.1:8790/</code>.</p>
 
+  <h2>Claude-Anbindung vom Handy</h2>
+  <p>Ist in der Einrichtung die Claude-Anbindung eingeschaltet, geht „Kurz an Claude“ auch vom Handy: die Nachricht landet in der Board-Datei,
+    Deine Claude-Code-Sitzung am PC antwortet hinein. Dateien für die Inbox nimmt der Dienst nur an, wenn Du ihn mit <code>--inbox</code> startest:</p>
+  <pre class="prompt">python board_lokal.py --datei "C:\Pfad\zu\board.md" --host 100.x.y.z --port 8790 --inbox</pre>
+  <p>Die Dateien landen im Ordner <code>inbox</code> neben der Board-Datei (anderer Ordner: <code>--inbox ordnername</code>), je höchstens 25 MB,
+    nichts wird überschrieben. <b>Grenze:</b> Claude antwortet nur, solange Deine Claude-Code-Sitzung mit dem Einrichtungs-Prompt läuft, mit bis zu 1 Minute Verzug.</p>
+
   <h2>Ohne VPN</h2>
   <p>Geht auch, aber umständlicher: Datei mit einem Sync-Programm, das ohne Cloud auskommt (z. B. Syncthing), aufs Handy spiegeln.
     Handy-Browser können Dateien meist nicht direkt zurückschreiben; die Maske arbeitet dann mit einer Kopie im Browser,
@@ -304,7 +337,8 @@ Regeln:
 
   <h2>Was der Dienst darf und was nicht</h2>
   <ul>
-    <li>Er liest und schreibt nur die eine Datei, die Du beim Start angibst. Geschrieben wird über eine Zwischendatei, damit nie eine halbe Datei entsteht.</li>
+    <li>Er liest und schreibt nur die eine Datei, die Du beim Start angibst. Geschrieben wird über eine Zwischendatei, damit nie eine halbe Datei entsteht.
+      Nur mit <code>--inbox</code> legt er zusätzlich neue Dateien in den Inbox-Ordner, ohne vorhandene zu überschreiben.</li>
     <li>Er beantwortet nur Anfragen vom eigenen Rechner und aus dem VPN-Netz. Alles andere bekommt „403“.</li>
     <li>Hat jemand anderes die Datei inzwischen geändert (Du am PC, Deine KI), lehnt er das Überschreiben ab; die Maske liest dann neu und wendet Deine Änderung erneut an.</li>
     <li>Er lädt nichts nach, schickt nichts weg und schreibt kein Protokoll mit Inhalten.</li>

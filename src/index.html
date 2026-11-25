@@ -16,6 +16,7 @@
   <div class="kopf">
     <h1 id="titel">Board</h1>
     <button class="neu" id="neuBtn" type="button">+ Neu</button>
+    <button class="cbtn" id="claudeBtn" type="button" hidden></button>
     <button class="sbtn" id="speicherBtn" type="button" title="Speicherstand"></button>
     <button class="mbtn" id="menuBtn" type="button" aria-haspopup="true" aria-label="Menü">☰</button>
     <input class="suche" id="suche" type="search" placeholder="Suchen (/) in Text, Notiz, #projekt, @wer, ^id" aria-label="Suchen" autocomplete="off">
@@ -39,7 +40,8 @@
       <h2>Nichts verlässt Dein Gerät</h2>
       <p>Die Seite besteht nur aus dieser einen HTML-Datei. Eine Sicherheitsregel im Kopf der Seite
         (<code>Content-Security-Policy: connect-src 'none'</code>) verbietet dem Browser jede Verbindung nach außen,
-        auch zum Anbieter der Seite. Deine Datei wird nur auf dem Gerät gelesen und geschrieben.</p>
+        auch zum Anbieter der Seite. Deine Datei wird nur auf dem Gerät gelesen und geschrieben.
+        Auch die optionale Claude-Anbindung (Standard aus) läuft nur über diese Datei: Deine eigene Claude-Code-Sitzung liest sie und antwortet hinein.</p>
       <p><b>Selbst prüfen:</b> Entwicklertools öffnen (F12), Reiter <i>Netzwerk</i>: nach dem Laden der Seite
         kommt keine Anfrage mehr dazu. Oder die Seite speichern (Strg+S) und offline als Datei öffnen, sie
         funktioniert genauso.</p>

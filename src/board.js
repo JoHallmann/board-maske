@@ -333,6 +333,7 @@
     $("titel").textContent = c.titel || (Q && Q.name) || "Board";
     document.title = (c.titel || "Board") + " · Board-Maske";
     renderSpeicher();
+    renderClaude();
     renderLeisten();
     renderSpalten();
   }
@@ -415,7 +416,7 @@
   }
 
   function renderSpalten() {
-    const haupt = $("spalten"), teile = [];
+    const haupt = $("spalten"), teile = [...claudeBanner()];
     const name = ich();
     if (!name && namen().length) {
       teile.push(el("div", {class: "banner"}, "Wer bist Du? Dann zeigt die Maske Fragen, die an Dich gehen.",
@@ -569,6 +570,10 @@
     punkte.push(knopf("Herunterladen (Sicherung)", herunterladen));
     if (Q && Q.art === "kopie" && navigator.canShare) punkte.push(knopf("Datei teilen …", teilen));
     punkte.push(knopf("Prompt für Deine KI kopieren", promptZeigen));
+    if (claudeAn()) {
+      punkte.push(knopf("Kurz an Claude …", () => kurzFenster("")));
+      punkte.push(knopf("Claude einrichten (Prompt) …", claudePromptZeigen));
+    }
     punkte.push(el("a", {href: "handy.html", target: "_blank", rel: "noopener", role: "menuitem", text: "Handy anbinden (VPN) ↗"}));
     if (!SERVER) { punkte.push(el("hr")); punkte.push(knopf("Board schließen", () => schliessen(false))); }
     m.replaceChildren(...punkte);
@@ -604,6 +609,8 @@
         el("div", {class: "mreihe"}, [["+1 Tag", "1t"], ["+1 Woche", "1w"], ["+1 Monat", "1m"]].map(([t, um]) =>
           el("button", {type: "button", text: t, onclick: () => mitEintrag(id, x => { BM.verschieben(x, um, heute()); }, (x) => { hinweis("Verschoben auf " + kurz(x.ab) + "."); detail(id); })}))));
     }
+    if (claudeAn()) klein.append(el("div", {class: "mlabel", text: "Claude"}),
+      el("div", {class: "mreihe"}, el("button", {type: "button", text: "An Claude zu dieser Karte …", onclick: () => kurzFenster(id)})));
     klein.append(el("div", {class: "mlabel", text: "Status"}),
       el("div", {class: "mreihe"}, BM.STATUS.map(s => el("button", {type: "button", class: s === e.status ? "an" : "", text: s,
         onclick: () => s !== e.status && mitEintrag(id, x => { x.status = s; }, "Status: " + s).then(r => r && detail(id))}))));
@@ -796,7 +803,13 @@
       ich: el("input", {type: "text", value: ich(), list: "dlIch", placeholder: "Dein Name aus der Liste"}),
       projekte: el("input", {type: "text", value: c.projekte.join(", "), placeholder: "z. B. haushalt, garten, arbeit"}),
       prompt: el("textarea", {class: "gross", value: c.prompt}),
+      claude: el("input", {type: "checkbox", checked: !!c.claude}),
+      inbox: el("input", {type: "text", value: c.inbox || "inbox", placeholder: "inbox"}),
     };
+    const claudeFelder = el("div", {class: "claudefelder", hidden: !c.claude},
+      el("label", {text: "Inbox-Ordner (neben der Board-Datei)"}), f.inbox,
+      el("p", {class: "hilfe", text: "Dateien, die Claude durchsehen soll. Den Prompt für Deine Claude-Sitzung findest Du danach im Menü unter „Claude einrichten (Prompt)“."}));
+    f.claude.addEventListener("change", () => { claudeFelder.hidden = !f.claude.checked; });
     const dl = el("datalist", {id: "dlIch"});
     const dlNeu = () => dl.replaceChildren(...BM.liste(f.namen.value).map(n => el("option", {value: n})));
     f.namen.addEventListener("input", dlNeu);
@@ -807,7 +820,12 @@
       const projekteWerte = BM.liste(f.projekte.value).map(p => p.toLowerCase());
       const falsch = projekteWerte.find(p => !BM.PROJ_RE.test("#" + p));
       if (falsch) { fehlt.textContent = "„" + falsch + "“ geht nicht als Projekt: nur Buchstaben, Ziffern, - und _ (mit Buchstabe vorn), keine Leerzeichen."; fehlt.hidden = false; return; }
-      const neu = {titel: BM.einzeilig(f.titel.value), namen: BM.liste(f.namen.value), projekte: projekteWerte, prompt: f.prompt.value.trim()};
+      const inboxWert = BM.einzeilig(f.inbox.value).replace(/\\/g, "/").replace(/\/+$/, "") || "inbox";
+      if (f.claude.checked && (/^\/|^[a-z]:|(^|\/)\.\.(\/|$)|[*?"<>|]/i.test(inboxWert))) {
+        fehlt.textContent = "Der Inbox-Ordner muss ein Ordner neben der Board-Datei sein, z. B. „inbox“ (kein ganzer Pfad, kein „..“)."; fehlt.hidden = false; return;
+      }
+      const neu = {titel: BM.einzeilig(f.titel.value), namen: BM.liste(f.namen.value), projekte: projekteWerte, prompt: f.prompt.value.trim(),
+        claude: f.claude.checked, inbox: inboxWert};
       LS.set("ich", BM.einzeilig(f.ich.value));
       aendern(m => { m.kopf = BM.kopfSchreiben(m.kopf, neu); m.cfg = BM.kopfLesen(m.kopf); return true; }, "Einrichtung gespeichert")
         .then(r => { if (r) { ebeneWeg(); if (fertig) fertig(); } });
@@ -821,6 +839,9 @@
       feld("Projekte (mit Komma getrennt)", f.projekte, "Kleinbuchstaben ohne Leerzeichen. In Aufgaben als #projekt."),
       feld("Prompt für Deine KI", f.prompt, "Arbeitsanweisung für eine KI, die die Datei mitbearbeitet. Steht in der Datei unter „### Prompt“."),
       el("div", {class: "mreihe"}, vorschlag),
+      el("label", {class: "haekchen"}, f.claude, "Claude-Anbindung: Kurz an Claude, Inbox, Online-Anzeige"),
+      el("p", {class: "hilfe", text: "Standard aus. Läuft ohne Netz über die Datei: Deine eigene Claude-Code-Sitzung liest sie und antwortet hinein. " + GRENZE_TEXT}),
+      claudeFelder,
       fehlt,
       el("div", {class: "knoepfe"}, el("button", {type: "submit", class: "speichern", text: "In die Datei schreiben"}),
         el("button", {type: "button", text: "Abbrechen", onclick: ebeneZu})));
@@ -851,6 +872,7 @@
     "- Fragen an einen Menschen als Notizzeile: BRAUCHT NAME: Frage. Empfehlung: Tipp. Die Antwort kommt als Zeile „Name TT.MM. HH:MM (Board): …“.",
     "- Mehrere Entscheidungen darunter je Zeile: E1 Frage (Empfehlung). Mit Auswahl: E2 Thema: a Option; b Option (b).",
     "- Alles über der ersten ##-Überschrift ist der Kopf (Name, Namen:, Projekte:, ### Prompt). Nichts löschen, was Du nicht verstehst.",
+    "- Mit Claude-Anbindung stehen im Kopf auch „Claude: an“, „Inbox: ordner“, „Claude online: JJJJ-MM-TT HH:MM“ und der Abschnitt „### An Claude“.",
   ].join("\n");
   function promptText() {
     const c = cfg();
@@ -866,6 +888,243 @@
     ebeneZeigen(panel("Prompt für Deine KI", [el("p", {class: "hilfe", text: "Gib diesen Text Deiner KI (z. B. einem Coding-Assistenten mit Zugriff auf die Datei). Der erste Teil kommt aus Deiner Einrichtung, der Rest erklärt das Format."}),
       pre, el("div", {class: "knoepfe"}, kopieren)]));
   }
+
+  // ------------------------------------------------------------------ Claude-Anbindung (optional, Standard aus)
+  // Ohne Netz: Kurznachrichten stehen in der Board-Datei unter "### An Claude". Deine eigene Claude-Code-Sitzung liest die
+  // Datei regelmaessig, antwortet darunter und setzt den Herzschlag "Claude online: JJJJ-MM-TT HH:MM" im Kopf.
+  const ONLINE_MIN = 5;                  // Herzschlag hoechstens so alt: online
+  const INBOX_PAUSE = 60000;             // Inbox-Anstoss hoechstens einmal pro Minute
+  const INBOX_MAX = 25 * 1024 * 1024;    // je Datei
+  const KURZ_MAX = 2000;
+  const INBOX_META = document.querySelector('meta[name="board-inbox"]');
+  const INBOX_SERVER = SERVER && !!INBOX_META;
+  const INBOX_DIENST = INBOX_SERVER ? (INBOX_META.getAttribute("content") || "inbox") : "";   // Ordner, in den der Dienst ablegt
+  const KANN_ORDNER = typeof window.showDirectoryPicker === "function";
+  const GRENZE_TEXT = "Claude antwortet nur, solange Deine Claude-Code-Sitzung mit dem Einrichtungs-Prompt läuft, mit bis zu 1 Minute Verzug.";
+  let kurzFuellen = null;   // fuellt den Verlauf im offenen Kurz-Fenster nach
+  function abk(t, n) { t = String(t || ""); return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, "") + " …" : t; }
+  function zeitJetzt() { const d = new Date(); return heute() + " " + zwei(d.getHours()) + ":" + zwei(d.getMinutes()); }
+  function zeitKurz(z) { return z ? kurz(z.slice(0, 10)) + " " + z.slice(11) : ""; }
+  function claudeAn() { return !!(zustand.m && cfg().claude); }
+  function onlineAlter() {
+    const z = cfg().online;
+    if (!z) return null;
+    const [d, u] = z.split(" "), [j, mo, t] = d.split("-").map(Number), [h, mi] = u.split(":").map(Number);
+    return (Date.now() - new Date(j, mo - 1, t, h, mi).getTime()) / 60000;
+  }
+  function istOnline() { const a = onlineAlter(); return a !== null && a <= ONLINE_MIN && a > -3; }
+  function ungelesen() { return claudeAn() ? cfg().kurz.filter(x => x.ungelesen) : []; }
+
+  function renderClaude() {
+    const b = $("claudeBtn");
+    if (!claudeAn()) { b.hidden = true; return; }
+    const on = istOnline(), neu = ungelesen().length;
+    b.hidden = false;
+    b.className = "cbtn" + (on ? " on" : "") + (neu ? " neu" : "");
+    b.textContent = (on ? "Claude online" : "Claude offline") + (neu ? " · " + neu + " neu" : "");
+    b.title = on ? "Herzschlag " + zeitKurz(cfg().online) + ". " + GRENZE_TEXT
+      : (cfg().online ? "Zuletzt online " + zeitKurz(cfg().online) + ". " : "Noch nie verbunden. ") + GRENZE_TEXT;
+    if (kurzFuellen && document.contains(kurzFuellen.ziel)) kurzFuellen();
+  }
+  setInterval(() => { if (claudeAn()) renderClaude(); }, 30000);
+
+  function kurzSenden(text, karte) {
+    text = BM.einzeilig(text);
+    if (!text) return Promise.resolve(false);
+    if (text.length > KURZ_MAX) { hinweis("Bitte kürzer fassen (höchstens " + KURZ_MAX + " Zeichen)."); return Promise.resolve(false); }
+    const id = "k" + [...zufall(3)].map(b => b.toString(16).padStart(2, "0")).join("");
+    return aendern(m => {
+      m.kopf = BM.kurzNeu(m.kopf, {t: zeitJetzt(), wer: ich() || "Board", text, karte: karte || "", id});
+      m.cfg = BM.kopfLesen(m.kopf);
+      return true;
+    }, Q && Q.art === "kopie" && !Q.beispiel ? "Gespeichert. Claude sieht es erst in der heruntergeladenen Datei." : "An Claude geschickt.");
+  }
+  function kurzGelesen(id) {
+    return aendern(m => {
+      const k = BM.kurzGelesen(m.kopf, id, zeitJetzt());
+      if (!k) return false;
+      m.kopf = k;
+      m.cfg = BM.kopfLesen(k);
+      return true;
+    });
+  }
+  function inboxAnstossen(zusatz) {
+    const seit = Date.now() - LS.get("inboxZeit", 0);
+    if (!zusatz && seit < INBOX_PAUSE && seit >= 0) { hinweis("Eben erst angestoßen. Noch " + Math.ceil((INBOX_PAUSE - seit) / 1000) + " s."); return Promise.resolve(false); }
+    LS.set("inboxZeit", Date.now());
+    return kurzSenden("📥 Inbox durchsehen" + (zusatz ? ": " + zusatz : ""));
+  }
+
+  // Dateien in den Inbox-Ordner legen: ueber den Board-Dienst (--inbox) oder direkt in einen gewaehlten Ordner.
+  async function inboxOrdner(fragen) {
+    const g = await DB.get("inbox");
+    let h = g && g.fuer === (Q && Q.name) ? g.handle : null;
+    if (h) {
+      let r = await h.queryPermission({mode: "readwrite"});
+      if (r !== "granted" && fragen) r = await h.requestPermission({mode: "readwrite"});
+      if (r === "granted") return h;
+      if (!fragen) return null;
+    }
+    if (!fragen) return null;
+    try { h = await window.showDirectoryPicker({id: "board-inbox", mode: "readwrite"}); }
+    catch (e) { if (e.name !== "AbortError") fehler(e); return null; }
+    await DB.set("inbox", {handle: h, fuer: Q && Q.name});
+    return h;
+  }
+  function sichererName(n) {
+    const s = String(n || "datei").normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, "_").slice(0, 120).replace(/^[.\s]+|[.\s]+$/g, "");
+    return !s ? "datei" : /^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³]|conin\$|conout\$)(\..*)?$/i.test(s) ? "datei_" + s : s;
+  }
+  async function freierName(dir, name) {
+    const punkt = name.lastIndexOf("."), stamm = punkt > 0 ? name.slice(0, punkt) : name, end = punkt > 0 ? name.slice(punkt) : "";
+    for (let i = 1; i < 1000; i++) {
+      const n = i === 1 ? name : stamm + " (" + i + ")" + end;
+      try { await dir.getFileHandle(n); } catch (e) { if (e.name === "NotFoundError") return n; throw e; }
+    }
+    throw new Error("Zu viele Dateien mit dem Namen " + name);
+  }
+  async function inboxAblegen(dateien) {
+    dateien = [...dateien];
+    if (!dateien.length) return;
+    const zuGross = dateien.find(d => d.size > INBOX_MAX);
+    if (zuGross) { hinweis("„" + zuGross.name + "“ ist größer als 25 MB."); return; }
+    const namen = [];
+    try {
+      if (INBOX_SERVER) {
+        for (const d of dateien) {
+          const r = await fetch("inbox/" + encodeURIComponent(sichererName(d.name)), {method: "PUT", cache: "no-store", body: d,
+            headers: {"Content-Type": "application/octet-stream"}});
+          if (!r.ok) throw new Error("Ablegen fehlgeschlagen (" + r.status + ")");
+          namen.push((await r.json()).name);
+        }
+      } else {
+        const dir = await inboxOrdner(true);
+        if (!dir) return;
+        for (const d of dateien) {
+          const n = await freierName(dir, sichererName(d.name));
+          const w = await (await dir.getFileHandle(n, {create: true})).createWritable();
+          await w.write(d);
+          await w.close();
+          namen.push(n);
+        }
+      }
+    } catch (e) { fehler(e); if (!namen.length) return; }
+    const liste = namen.slice(0, 5).join(", ") + (namen.length > 5 ? " und " + (namen.length - 5) + " weitere" : "");
+    const ordner = INBOX_SERVER ? INBOX_DIENST : (cfg().inbox || "inbox");
+    await inboxAnstossen(namen.length + (namen.length === 1 ? " Datei" : " Dateien") + " neu in „" + ordner + "“ (" + liste + ")");
+  }
+
+  function kurzFenster(karte) {
+    const c = cfg(), entwurfKey = "kurzEntwurf";
+    const ta = el("textarea", {value: LS.get(entwurfKey, ""), autofocus: true, maxlength: String(KURZ_MAX),
+      placeholder: "Kurze Nachricht an Claude …", "aria-label": "Nachricht an Claude"});
+    ta.addEventListener("input", () => LS.set(entwurfKey, ta.value));
+    const karteE = karte && zustand.m.eintraege.find(x => x.id === karte);
+    const senden = () => kurzSenden(ta.value, karte).then(r => { if (r) { ta.value = ""; LS.set(entwurfKey, ""); } });
+    ta.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); senden(); } });
+    const status = el("p", {class: "cstatus"});
+    const liste = el("div", {class: "kurzliste"});
+    const fuellen = () => {
+      const k = cfg();
+      const on = istOnline();
+      status.replaceChildren(el("span", {class: "cpunkt" + (on ? " on" : "")}), on ? "Claude ist online (Herzschlag " + zeitKurz(k.online) + ")."
+        : k.online ? "Claude ist offline, zuletzt " + zeitKurz(k.online) + "." : "Claude war noch nie verbunden. Einrichten über „Claude einrichten (Prompt)“.");
+      const eintraege = k.kurz.slice().reverse().slice(0, 30);
+      liste.replaceChildren(...(eintraege.length ? eintraege.map(x => {
+        const ref = x.karte && zustand.m.eintraege.find(e => e.id === x.karte);
+        return el("div", {class: "kurz" + (x.ungelesen ? " ungelesen" : "")},
+          el("div", {class: "kmeta"}, zeitKurz(x.t) + " · " + x.wer, ref ? el("button", {type: "button", class: "klink", text: "Karte: " + abk(ref.text, 40),
+            onclick: () => detail(ref.id)}) : null),
+          el("div", {class: "ktxt"}, mitLinks(x.text)),
+          x.antworten.map(a => el("div", {class: "antwort"}, el("div", {class: "kmeta", text: "Claude · " + zeitKurz(a.t)}), el("div", {class: "ktxt"}, mitLinks(a.text)))),
+          x.antworten.length ? null : el("div", {class: "kmeta warte", text: on ? "wartet auf Claude …" : "noch keine Antwort"}),
+          x.ungelesen ? el("div", {class: "mreihe"}, el("button", {type: "button", text: "Gelesen", onclick: () => kurzGelesen(x.id)})) : null);
+      }) : [el("div", {class: "leer", text: "Noch keine Nachrichten."})]));
+    };
+    fuellen();
+    kurzFuellen = fuellen;
+    kurzFuellen.ziel = liste;
+    const inbox = [];
+    const inboxName = INBOX_SERVER ? INBOX_DIENST : (c.inbox || "inbox");
+    if (INBOX_SERVER || (KANN_ORDNER && Q && Q.art === "handle")) {
+      const wahl = el("input", {type: "file", multiple: true, hidden: true, onchange: () => { inboxAblegen(wahl.files); wahl.value = ""; }});
+      const zone = el("div", {class: "ablage", tabindex: "0", role: "button", "aria-label": "Dateien in die Inbox legen", onclick: () => wahl.click(),
+        onkeydown: (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); wahl.click(); } }},
+        el("b", {text: "Dateien hierher ziehen"}), " oder tippen zum Auswählen. Sie landen im Ordner „" + inboxName + "“" +
+        (INBOX_SERVER ? " auf Deinem PC" : " (beim ersten Mal wählst Du ihn aus)") + ", danach sagt die Maske Claude Bescheid.", wahl);
+      zone.addEventListener("dragover", (ev) => { ev.preventDefault(); zone.classList.add("drueber"); });
+      zone.addEventListener("dragleave", () => zone.classList.remove("drueber"));
+      zone.addEventListener("drop", (ev) => { ev.preventDefault(); zone.classList.remove("drueber"); inboxAblegen(ev.dataTransfer.files); });
+      inbox.push(zone);
+      if (INBOX_SERVER && INBOX_DIENST !== (c.inbox || "inbox")) inbox.push(el("p", {class: "hilfe", text: "Achtung: Der Dienst legt in „" + INBOX_DIENST +
+        "“ ab, in der Einrichtung steht „" + (c.inbox || "inbox") + "“. Die Maske nennt Claude den Ordner bei jedem Ablegen mit."}));
+    } else {
+      inbox.push(el("p", {class: "hilfe", text: "Dein Browser kann keine Dateien in einen Ordner legen. Lege sie mit dem Dateimanager in den Ordner „" +
+        inboxName + "“ neben der Board-Datei und tippe dann auf „Inbox durchsehen lassen“."}));
+    }
+    inbox.push(el("div", {class: "mreihe"}, el("button", {type: "button", text: "📥 Inbox durchsehen lassen", onclick: () => inboxAnstossen("")})));
+    const inhalt = [
+      el("p", {class: "hilfe grenze", text: GRENZE_TEXT}),
+      status,
+      karteE ? el("p", {class: "hilfe", text: "Zur Karte: " + abk(karteE.text, 80)}) : null,
+      ta,
+      el("div", {class: "knoepfe"}, el("button", {type: "button", class: "speichern", text: "Senden", onclick: senden}),
+        el("span", {class: "hilfe", text: "Strg+Enter"})),
+      el("div", {class: "dlabel", text: "Inbox"}), inbox,
+      el("div", {class: "dlabel", text: "Verlauf (neueste oben)"}), liste,
+    ];
+    ebeneZeigen(panel(karteE ? "An Claude zu dieser Karte" : "Kurz an Claude", inhalt));
+  }
+
+  function claudePromptText() {
+    const c = cfg(), name = Q ? Q.name : "board.md", inbox = c.inbox || "inbox";
+    return [
+      "Du bist meine Claude-Code-Sitzung für das Board „" + (c.titel || "Board") + "“. Die Board-Datei heißt " + name + " und liegt in dem Ordner, in dem Du gestartet wurdest.",
+      "Starte mich so: Claude Code im Ordner der Board-Datei öffnen und eingeben: /loop 1m (dann diesen ganzen Text einfügen).",
+      "",
+      "Bei jedem Durchlauf:",
+      "1. Lies " + name + " frisch ein. Ändere nur die Stellen, die hier beschrieben sind, und schreibe sofort zurück. Schreibe nie eine ältere Fassung zurück.",
+      "2. Herzschlag: Setze im Kopf der Datei (über der ersten ##-Überschrift) die Zeile „Claude online: JJJJ-MM-TT HH:MM“ auf die aktuelle Ortszeit. Fehlt sie, füge sie direkt unter „Claude: an“ ein. Mindestens alle 3 Minuten, auch wenn sonst nichts zu tun ist.",
+      "3. Kurznachrichten stehen im Kopf unter „### An Claude“, je Zeile: „- JJJJ-MM-TT HH:MM Name: Text ^kxxxxxx“, manchmal mit „karte:id“ (dann geht es um die Aufgabe mit dieser ^id).",
+      "   Neu ist ein Eintrag ohne eingerückte Zeile „Claude …:“ darunter. Antworte direkt darunter, zwei Leerzeichen eingerückt: „  Claude JJJJ-MM-TT HH:MM: Deine Antwort“.",
+      "   Weitere Zeilen der Antwort ebenfalls zwei Leerzeichen eingerückt. Kurz und konkret. Zeilen „gelesen …“ setzt die Maske, nicht anfassen. Einträge nie löschen.",
+      "4. Beginnt eine Nachricht mit „📥 Inbox durchsehen“: Sieh den Ordner „" + inbox + "“ neben der Board-Datei durch (nennt die Nachricht einen anderen Ordner, diesen). Lege zu jeder neuen Datei eine Aufgabe an oder ergänze eine passende,",
+      "   verschiebe bearbeitete Dateien nach „" + inbox + "/erledigt“ und antworte unter der Nachricht in einem Satz, was Du gemacht hast.",
+      "5. Nichts, was Geld kostet, etwas veröffentlicht oder Nachrichten an andere schickt, ohne Rückfrage: dafür eine Zeile „BRAUCHT NAME: Frage. Empfehlung: …“ an der passenden Aufgabe.",
+      "",
+      "Grenze: Die Maske zeigt „Claude online“, solange der Herzschlag höchstens " + ONLINE_MIN + " Minuten alt ist. Antworten gibt es nur, solange diese Sitzung läuft, mit bis zu 1 Minute Verzug.",
+      "",
+      promptText(),
+    ].join("\n");
+  }
+  function claudePromptZeigen() {
+    const text = claudePromptText();
+    const pre = el("pre", {class: "prompt", text});
+    const kopieren = el("button", {type: "button", class: "speichern", text: "Kopieren", onclick: async () => {
+      try { await navigator.clipboard.writeText(text); hinweis("Prompt kopiert."); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); hinweis("Text ist markiert: jetzt Strg+C bzw. Kopieren."); }
+    }});
+    ebeneZeigen(panel("Claude einrichten", [
+      el("p", {class: "hilfe", text: "Für Claude Code auf Deinem Rechner, im Ordner der Board-Datei. Die Maske selbst baut keine Verbindung auf: Claude liest und schreibt nur die Datei."}),
+      el("p", {class: "hilfe grenze", text: GRENZE_TEXT}),
+      pre, el("div", {class: "knoepfe"}, kopieren)]));
+  }
+
+  function claudeBanner() {
+    const neu = ungelesen();
+    if (!neu.length) return [];
+    return neu.slice(0, 3).map(x => {
+      const a = x.antworten[x.antworten.length - 1];
+      const ref = x.karte && zustand.m.eintraege.find(e => e.id === x.karte);
+      return el("div", {class: "banner claude"},
+        el("div", {class: "btext"}, el("b", {text: "Claude antwortet"}), " auf „" + abk(x.text, 60) + "“: ", mitLinks(abk(a.text.replace(/\n/g, " "), 280))),
+        el("button", {type: "button", text: "Gelesen", onclick: () => kurzGelesen(x.id)}),
+        el("button", {type: "button", text: "Antworten", onclick: () => kurzFenster(x.karte)}),
+        ref ? el("button", {type: "button", text: "Zur Karte", onclick: () => detail(ref.id)}) : null);
+    }).concat(neu.length > 3 ? [el("div", {class: "banner claude"}, (neu.length - 3) + " weitere Antworten. ",
+      el("button", {type: "button", text: "Alle zeigen", onclick: () => kurzFenster("")}))] : []);
+  }
+  $("claudeBtn").addEventListener("click", () => kurzFenster(""));
 
   // ------------------------------------------------------------------ Dateien
   async function vorWechsel() {
@@ -989,6 +1248,7 @@
     zustand.m = null;
     await DB.del("quelle");
     await DB.del("kopie");      // nichts vom Board bleibt im Browser zurueck
+    await DB.del("inbox");
     $("kopf").hidden = true;
     $("spalten").hidden = true;
     $("start").hidden = false;

@@ -69,7 +69,7 @@ def uebersicht():
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"color-scheme\" content=\"light dark\">\n"
             "<title>Board-Maske</title>\n<style>%s</style>\n</head>\n<body>\n<main>\n<h1>Board-Maske</h1>\n"
             "<p>Aufgaben-Board im Browser für Deine eigene Markdown-Datei. Ohne Konto, ohne Server, nichts verlässt Dein Gerät.</p>\n"
-            "<p>Jede Version bleibt unter ihrer Adresse unverändert stehen. Neue Funktionen kommen als neue Version.</p>\n"
+            "<p>Jede Version bleibt unter ihrer Adresse stehen. Neue Funktionen kommen als neue Version (einzige Ausnahme: v1 bekam am 25.11.2026 die optionale Claude-Anbindung, Standard aus).</p>\n"
             "<ul>\n%s\n</ul>\n<p class=\"leise\">Von Jonas Hallmann. Open Source unter MIT-Lizenz, ohne Support. <a href=\"https://github.com/JoHallmann/board-maske\" rel=\"noreferrer\">Quellcode auf GitHub</a> · <a href=\"https://jonashallmann.de/impressum.html\" rel=\"noreferrer\">Impressum</a></p>\n</main>\n</body>\n</html>\n"
             % (html.escape(csp("", css)), css, punkte))
 

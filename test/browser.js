@@ -9,7 +9,7 @@ const fs = require("fs"), os = require("os"), path = require("path");
 const WURZEL = path.resolve(__dirname, "..");
 const VERSION = process.argv[2] || "v1";
 const BILDER = path.resolve(process.argv[3] || path.join(os.tmpdir(), "bm_bilder"));
-const PORT_DIENST = 8791, PORT_CDP = 9339;
+const PORT_DIENST = 8791, PORT_OHNE_INBOX = 8792, PORT_CDP = 9339;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "bm_browser_"));
 const BOARD = path.join(TMP, "board.md");
 fs.copyFileSync(path.join(WURZEL, "src", "beispiel.md"), BOARD);
@@ -29,7 +29,8 @@ function cdp(method, params = {}, sessionId) {
 }
 
 async function main() {
-  const dienst = spawn("python", [path.join(WURZEL, VERSION, "board_lokal.py"), "--datei", BOARD, "--port", String(PORT_DIENST)], {stdio: ["ignore", "pipe", "pipe"]});
+  const dienst = spawn("python", [path.join(WURZEL, VERSION, "board_lokal.py"), "--datei", BOARD, "--port", String(PORT_DIENST), "--inbox"], {stdio: ["ignore", "pipe", "pipe"]});
+  const ohneInbox = spawn("python", [path.join(WURZEL, VERSION, "board_lokal.py"), "--datei", BOARD, "--port", String(PORT_OHNE_INBOX)], {stdio: "ignore"});
   let dienstLog = "";
   dienst.stderr.on("data", d => { dienstLog += d; });
   const profil = path.join(TMP, "profil");
@@ -65,6 +66,14 @@ async function main() {
   const klick = (sel) => ev(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return false; e.click(); return true; })()`);
   const klickText = (sel, text) => ev(`(() => { const e = [...document.querySelectorAll(${JSON.stringify(sel)})].find(x => x.textContent.trim().startsWith(${JSON.stringify(text)})); if (!e) return false; e.click(); return true; })()`);
   const datei = () => fs.readFileSync(BOARD, "utf8");
+  const zwei = (n) => String(n).padStart(2, "0");
+  const jetzt = () => { const d = new Date(); return d.getFullYear() + "-" + zwei(d.getMonth() + 1) + "-" + zwei(d.getDate()) + " " + zwei(d.getHours()) + ":" + zwei(d.getMinutes()); };
+  const roh = (opt, body) => new Promise((ok, nein) => {
+    const r = require("http").request(Object.assign({host: "127.0.0.1", port: PORT_DIENST, method: "PUT"}, opt), (res) => {
+      let b = ""; res.on("data", d => { b += d; }); res.on("end", () => ok({status: res.statusCode, body: b}));
+    });
+    r.on("error", nein); r.end(body);
+  });
 
   // ---------------- A: Datei-Variante (file://) mit dem Beispiel
   await groesse(1280, 800); await farbe(false);
@@ -149,6 +158,76 @@ async function main() {
   await warte(1200);
   pruefe("Einrichtung schreibt Projekte in den Kopf", /^Projekte: .*urlaub/m.test(datei().split("## Offen")[0]));
 
+  // ---------------- C: Claude-Anbindung (Standard aus, einschalten, Kurz, Antwort, Gelesen, Inbox)
+  pruefe("Claude: Standard aus (kein Knopf, kein Menüpunkt)", await ev("document.getElementById('claudeBtn').hidden")
+    && !(await ev("document.getElementById('menuBtn').click(), [...document.querySelectorAll('#menu button')].some(b => b.textContent.startsWith('Kurz an Claude'))")));
+  await ev("document.getElementById('menuBtn').click()"); await warte(100);
+  await ev("document.getElementById('menuBtn').click()"); await warte(150);
+  await klickText("#menu button", "Einrichtung");
+  await bis("document.querySelector('.panel form') !== null");
+  await ev(`(() => { const f = document.querySelector('.panel form'); const c = [...f.querySelectorAll('input[type=checkbox]')].pop(); c.click(); })()`);
+  await warte(150);
+  await foto("pc_einrichtung_claude");
+  await ev("document.querySelector('.panel form').requestSubmit()"); await warte(1200);
+  const kopfC = datei().split("## Offen")[0];
+  pruefe("Claude: Einrichtung schreibt „Claude: an“ und „Inbox: inbox“", /^Claude: an$/m.test(kopfC) && /^Inbox: inbox$/m.test(kopfC), kopfC.slice(-300));
+  pruefe("Claude: Knopf zeigt „Claude offline“", await bis("!document.getElementById('claudeBtn').hidden && document.getElementById('claudeBtn').textContent.startsWith('Claude offline')"));
+  await klick("#claudeBtn");
+  pruefe("Claude: Kurz-Fenster mit Grenze und Ablage", await bis("document.querySelector('.panel textarea') !== null && document.querySelector('.hilfe.grenze') !== null && document.querySelector('.ablage') !== null"));
+  await ev(`(() => { const t = document.querySelector('.panel textarea'); t.value = 'Bitte die Gartenliste prüfen'; t.dispatchEvent(new Event('input')); })()`);
+  await klickText(".panel button", "Senden"); await warte(1200);
+  const kz = datei().split("\n").find(z => z.includes("Bitte die Gartenliste prüfen")) || "";
+  const kid = (/\^(k[0-9a-f]{6})$/.exec(kz) || [])[1];
+  pruefe("Claude: Kurznachricht steht unter „### An Claude“ im Kopf", /^- \d{4}-\d{2}-\d{2} \d{2}:\d{2} Anna: Bitte die Gartenliste prüfen \^k[0-9a-f]{6}$/.test(kz)
+    && /### An Claude\n/.test(datei().split("## Offen")[0]), kz);
+  pruefe("Claude: Textfeld nach dem Senden leer", await ev("document.querySelector('.panel textarea').value === ''"));
+  // Inbox ueber den Dienst: Datei waehlen wie ein Mensch (DOM.setFileInputFiles), zweimal gleicher Name
+  const probe = path.join(TMP, "notiz.txt"); fs.writeFileSync(probe, "Inhalt der Notiz\n");
+  const {root} = await c("DOM.getDocument", {depth: -1});
+  const {nodeId} = await c("DOM.querySelector", {nodeId: root.nodeId, selector: ".ablage input[type=file]"});
+  await c("DOM.setFileInputFiles", {nodeId, files: [probe]}); await warte(1500);
+  const {nodeId: n2} = await c("DOM.querySelector", {nodeId: (await c("DOM.getDocument", {depth: -1})).root.nodeId, selector: ".ablage input[type=file]"});
+  await c("DOM.setFileInputFiles", {nodeId: n2, files: [probe]}); await warte(1500);
+  const inboxOrdner = path.join(TMP, "inbox");
+  const inboxDateien = fs.existsSync(inboxOrdner) ? fs.readdirSync(inboxOrdner).sort() : [];
+  pruefe("Claude: Inbox legt Dateien ab, ohne zu überschreiben", inboxDateien.join("|") === "notiz (2).txt|notiz.txt"
+    && fs.readFileSync(path.join(inboxOrdner, "notiz.txt"), "utf8") === "Inhalt der Notiz\n", inboxDateien.join("|"));
+  pruefe("Claude: Inbox-Anstoß in der Datei", /Anna: 📥 Inbox durchsehen: 1 Datei neu in „inbox“ \(notiz\.txt\) \^k/.test(datei())
+    && /Anna: 📥 Inbox durchsehen: 1 Datei neu in „inbox“ \(notiz \(2\)\.txt\) \^k/.test(datei()), (datei().match(/.*Inbox durchsehen.*/g) || []).join(" / "));
+  await foto("pc_kurz_hell");
+  await ev("document.querySelector('.zu-btn').click()"); await warte(200);
+  // Claude antwortet: Herzschlag + Antwort in die Datei (so wie die Claude-Code-Sitzung)
+  fs.writeFileSync(BOARD, datei().replace(/^(Inbox: inbox)$/m, "$1\nClaude online: " + jetzt())
+    .replace(kz, kz + "\n  Claude " + jetzt() + ": Geprüft, drei Pflanzen fehlen. Steht jetzt in der Karte.\n  Zweite Zeile mit Details."));
+  pruefe("Claude: Online-Anzeige und „1 neu“", await bis("document.getElementById('claudeBtn').textContent === 'Claude online · 1 neu'", 9000),
+    await ev("document.getElementById('claudeBtn').textContent"));
+  pruefe("Claude: Antwort erscheint als Hinweis oben", await ev("[...document.querySelectorAll('.banner.claude')].some(b => b.textContent.includes('drei Pflanzen fehlen'))"));
+  await foto("pc_claude_antwort_hell");
+  await farbe(true); await warte(200); await foto("pc_claude_antwort_dunkel"); await farbe(false);
+  await ev("[...document.querySelectorAll('.banner.claude button')].find(b => b.textContent === 'Gelesen').click()"); await warte(1200);
+  const nachG = datei().split("\n"), iG = nachG.findIndex(z => z.endsWith("^" + kid));
+  pruefe("Claude: „Gelesen“ schreibt gelesen-Zeile unter die Antwort", iG >= 0 && /^  gelesen \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(nachG[iG + 3] || ""), nachG.slice(iG, iG + 4).join(" | "));
+  pruefe("Claude: Hinweis danach weg", await bis("document.querySelectorAll('.banner.claude').length === 0"));
+  // Aus einer Karte heraus
+  await klick('.karte[data-id="c0ffee"]'); await warte(300);
+  await klickText(".panel button", "An Claude zu dieser Karte"); await warte(300);
+  await ev(`(() => { const t = document.querySelector('.panel textarea'); t.value = 'Frage zur Karte'; })()`);
+  await klickText(".panel button", "Senden"); await warte(1200);
+  pruefe("Claude: Nachricht zur Karte trägt karte:id", /Anna: Frage zur Karte karte:c0ffee \^k[0-9a-f]{6}$/m.test(datei()));
+  await ev("document.querySelector('.zu-btn') && document.querySelector('.zu-btn').click()"); await warte(200);
+  // Dienst-Pruefungen fuer die Inbox
+  const pr1 = await roh({path: "/inbox/" + encodeURIComponent("../boese.txt"), headers: {"Content-Length": 2}}, "xx");
+  pruefe("Dienst: Inbox-Name mit ../ bleibt im Inbox-Ordner", pr1.status === 201 && !fs.existsSync(path.join(TMP, "boese.txt")) && fs.existsSync(path.join(inboxOrdner, JSON.parse(pr1.body).name)), pr1.status + " " + pr1.body);
+  const pr2 = await roh({path: "/inbox/a/b.txt", headers: {"Content-Length": 1}}, "x");
+  pruefe("Dienst: Inbox-Unterpfad bekommt 400", pr2.status === 400, String(pr2.status));
+  const pr3 = await roh({path: "/inbox/x.txt", headers: {"Content-Length": 1, "Origin": "http://evil.example"}}, "x");
+  pruefe("Dienst: Inbox mit fremdem Origin bekommt 403", pr3.status === 403, String(pr3.status));
+  const pr4 = await roh({path: "/inbox/gross.bin", headers: {"Content-Length": 26 * 1024 * 1024}}, "").catch(() => ({status: 413}));
+  pruefe("Dienst: Inbox über 25 MB bekommt 413", pr4.status === 413, String(pr4.status));
+  const pr5 = await roh({port: PORT_OHNE_INBOX, path: "/inbox/x.txt", headers: {"Content-Length": 1}}, "x");
+  const seiteOhne = await (await fetch("http://127.0.0.1:" + PORT_OHNE_INBOX + "/")).text();
+  pruefe("Dienst ohne --inbox: kein Inbox-Ablegen, kein Meta", pr5.status === 404 && !seiteOhne.includes('<meta name="board-inbox"') && seiteOhne.includes('<meta name="board-server"'), String(pr5.status));
+
   // Konflikt: Datei wird zwischen Lesen und Schreiben geaendert -> Dienst lehnt ab (412)
   const r1 = await fetch(dienstUrl + "board.md"); const tag = r1.headers.get("etag"); await r1.text();
   fs.writeFileSync(BOARD, datei() + "\n");
@@ -167,6 +246,12 @@ async function main() {
   await bis("document.querySelectorAll('.karte').length >= 5");
   pruefe("Handy: Tabs sichtbar, nur eine Spalte", await ev("getComputedStyle(document.getElementById('tabs')).display !== 'none' && document.querySelectorAll('.spalte:not(.aus)').length === 1"));
   pruefe("Handy: keine waagerechte Scrollleiste", await ev("document.documentElement.scrollWidth <= innerWidth + 1"), await ev("document.documentElement.scrollWidth"));
+  pruefe("Handy: Claude-Knopf sichtbar", await ev("!document.getElementById('claudeBtn').hidden && document.getElementById('claudeBtn').getBoundingClientRect().right <= innerWidth"));
+  await klick("#claudeBtn"); await bis("document.querySelector('.panel textarea') !== null");
+  pruefe("Handy: Kurz-Fenster ohne waagerechte Scrollleiste", await ev("document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector('.panel').scrollWidth <= document.querySelector('.panel').clientWidth + 1"));
+  await foto("handy_kurz_hell");
+  await farbe(true); await warte(200); await foto("handy_kurz_dunkel"); await farbe(false);
+  await ev("document.querySelector('.zu-btn').click()"); await warte(200);
   await foto("handy_board_hell");
   await farbe(true); await warte(200); await foto("handy_board_dunkel"); await farbe(false);
   // Frage im Beispiel ist beantwortet; fuer das Handyfoto die Frage-Karte aus dem file://-Beispiel nehmen
@@ -191,6 +276,7 @@ async function main() {
 
   await cdp("Browser.close").catch(() => {});
   dienst.kill();
+  ohneInbox.kill();
   await warte(500);
   try { fs.rmSync(TMP, {recursive: true, force: true}); } catch (e) { /* Profil evtl. noch gesperrt */ }
   const schlecht = ergebnisse.filter(e => !e[1]);

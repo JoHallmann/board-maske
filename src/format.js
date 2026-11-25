@@ -25,8 +25,9 @@ const BM = (() => {
   }
 
   // Zeilen wie Pythons str.splitlines(): ein abschliessender Umbruch erzeugt keine leere Zeile.
+  const UMBRUCH_RE = /\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/;   // alles, was ein Editor als Zeilenende sehen kann
   function zeilen(text) {
-    const z = text.split(/\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/);
+    const z = text.split(UMBRUCH_RE);
     if (z.length && z[z.length - 1] === "") z.pop();
     return z;
   }
@@ -38,34 +39,123 @@ const BM = (() => {
   // Einrichtung im Kopf: "Namen: ...", "Projekte: ..." (auch als "> Projekte: ..." oder fett) und "### Prompt".
   const CFG_RE = /^(>\s*)?(?:[-*]\s+)?\**(Namen|Projekte)\**\s*:\**\s*(.*)$/i;
   const PROMPT_RE = /^###\s+Prompt\b/i;
+  // Claude-Anbindung (optional, Standard aus): "Claude: an", "Inbox: ordner", Herzschlag "Claude online: JJJJ-MM-TT HH:MM"
+  // (schreibt die eigene Claude-Sitzung) und der Abschnitt "### An Claude" mit den Kurznachrichten.
+  const CL_RE = /^(>\s*)?\**(Claude online|Claude|Inbox)\**\s*:\**\s*(.*)$/i;
+  const CL_WERT_RE = /^(an|ja|on|yes|aus|nein|off|no)$/i, CL_AN_RE = /^(an|ja|on|yes)$/i;
+  const KURZ_KOPF = "### An Claude";
+  const KURZ_KOPF_RE = /^###\s+An Claude\s*$/i;
+  const ZEIT = "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}";
+  const ZEIT_RE = new RegExp("^" + ZEIT + "$");
+  const KURZ_RE = new RegExp("^- (" + ZEIT + ") ([^:]{1,40}): (.*?)(?: karte:\\^?([0-9a-z]{4,12}))? \\^(k[0-9a-f]{6})\\s*$");
+  const ANTW_RE = new RegExp("^\\s+Claude (" + ZEIT + "):\\s?(.*)$");
+  const GEL_RE = new RegExp("^\\s+gelesen (" + ZEIT + ")\\s*$");
+  const KURZ_ID_RE = /^k[0-9a-f]{6}$/;
   function kopfLesen(kopf) {
-    const k = {titel: "", namen: [], projekte: [], prompt: ""};
-    let imPrompt = false;
-    const pl = [];
+    const k = {titel: "", namen: [], projekte: [], prompt: "", claude: false, inbox: "", online: "", kurz: []};
+    let imPrompt = false, imKurz = false;
+    const pl = [], kl = [];
     for (const z of kopf) {
       if (/^#{1,6}\s/.test(z)) {
-        if (PROMPT_RE.test(z)) { imPrompt = true; continue; }
-        imPrompt = false;
+        imPrompt = PROMPT_RE.test(z);
+        imKurz = !imPrompt && KURZ_KOPF_RE.test(z);
+        if (imPrompt || imKurz) continue;
         const h1 = /^#\s+(.+)$/.exec(z);
         if (h1 && !k.titel) k.titel = h1[1].trim();
         continue;
       }
       if (imPrompt) { pl.push(z); continue; }
+      if (imKurz) { kl.push(z); continue; }
       const m = CFG_RE.exec(z);
       if (m) {
         const v = liste(m[3].replace(/\*\*/g, ""));
         if (m[2].toLowerCase() === "namen") k.namen = v;
         else k.projekte = v.map(p => p.toLowerCase());
+        continue;
+      }
+      const c = CL_RE.exec(z);
+      if (c) {
+        const art = c[2].toLowerCase(), wert = c[3].replace(/\*\*/g, "").trim();
+        if (art === "claude") { if (CL_WERT_RE.test(wert)) k.claude = CL_AN_RE.test(wert); }
+        else if (art === "inbox") k.inbox = wert;
+        else if (ZEIT_RE.test(wert)) k.online = wert;
       }
     }
     while (pl.length && !pl[0].trim()) pl.shift();
     while (pl.length && !pl[pl.length - 1].trim()) pl.pop();
     k.prompt = pl.join("\n");
+    k.kurz = kurzLesen(kl);
     return k;
   }
 
-  // Schreibt Titel, Namen, Projekte und Prompt in den Kopf; alles andere im Kopf bleibt unberuehrt.
+  // Kurznachrichten: "- JJJJ-MM-TT HH:MM Name: Text [karte:id] ^kxxxxxx", darunter eingerueckt die Antworten
+  // "Claude JJJJ-MM-TT HH:MM: ..." (Folgezeilen eingerueckt) und "gelesen JJJJ-MM-TT HH:MM" (setzt die Maske).
+  // Ungelesen: eine Antwort steht nach der letzten gelesen-Zeile oder ist juenger als sie.
+  function kurzLesen(z) {
+    const liste = [];
+    let e = null, a = null;
+    for (const s of z) {
+      let m;
+      if ((m = KURZ_RE.exec(s))) {
+        e = {id: m[5], t: m[1], wer: m[2].trim(), text: m[3].trim(), karte: m[4] || "", antworten: [], gelesen: "", neu: false};
+        liste.push(e); a = null; continue;
+      }
+      if (!s.trim()) { a = null; continue; }
+      if (!e) continue;
+      if (!/^\s/.test(s)) { e = null; a = null; continue; }
+      if ((m = ANTW_RE.exec(s))) { a = {t: m[1], text: m[2].trim()}; e.antworten.push(a); e.neu = true; continue; }
+      if ((m = GEL_RE.exec(s))) { if (m[1] > e.gelesen) e.gelesen = m[1]; e.neu = false; a = null; continue; }
+      if (a) a.text += (a.text ? "\n" : "") + s.trim();
+    }
+    for (const x of liste) {
+      const letzte = x.antworten.reduce((m, a) => a.t > m ? a.t : m, "");
+      x.ungelesen = !!x.antworten.length && (x.neu || letzte > x.gelesen);
+      delete x.neu;
+    }
+    return liste;
+  }
+  function kurzBereich(z) {
+    const i = z.findIndex(s => KURZ_KOPF_RE.test(s));
+    if (i < 0) return null;
+    let ende = i + 1;
+    while (ende < z.length && !/^#{1,6}\s/.test(z[ende])) ende++;
+    return [i, ende];
+  }
+  // Neue Kurznachricht ans Ende des Abschnitts (legt ihn bei Bedarf an). Gibt den neuen Kopf zurueck.
+  function kurzNeu(kopf, n) {
+    const z = kopf.slice();
+    const text = einzeilig(n.text).replace(/\s+\^k[0-9a-f]{6}$/, "").replace(/(^|\s)karte:(\^?[0-9a-z]{4,12})$/i, "$1karte: $2");
+    const wer = einzeilig(n.wer || "").replace(/:/g, "").slice(0, 40).trim() || "Board";
+    const zeile = "- " + n.t + " " + wer + ": " + (text || "(leer)") + (n.karte ? " karte:" + n.karte : "") + " ^" + n.id;
+    let b = kurzBereich(z);
+    if (!b) {
+      while (z.length && !z[z.length - 1].trim()) z.pop();
+      z.push("", KURZ_KOPF);
+      b = [z.length - 1, z.length];
+    }
+    let pos = b[1];
+    while (pos > b[0] + 1 && !z[pos - 1].trim()) pos--;
+    z.splice(pos, 0, zeile);
+    return z;
+  }
+  // Als gelesen markieren: "  gelesen ZEIT" ans Ende des Eintrags (alte gelesen-Zeilen weg). null, wenn es ihn nicht gibt.
+  function kurzGelesen(kopf, id, zeit) {
+    const z = kopf.slice(), b = kurzBereich(z);
+    if (!b) return null;
+    let i = -1;
+    for (let k = b[0] + 1; k < b[1]; k++) { const m = KURZ_RE.exec(z[k]); if (m && m[5] === id) { i = k; break; } }
+    if (i < 0) return null;
+    let letzte = i;   // letzte eingerueckte Zeile des Eintrags; Leerzeilen beenden ihn nicht (wie in kurzLesen)
+    for (let k = i + 1; k < b[1]; k++) { if (!z[k].trim()) continue; if (!/^\s/.test(z[k])) break; letzte = k; }
+    for (let k = letzte; k > i; k--) if (GEL_RE.test(z[k])) { z.splice(k, 1); letzte--; }
+    z.splice(letzte + 1, 0, "  gelesen " + zeit);
+    return z;
+  }
+
+  // Schreibt Titel, Namen, Projekte, Claude-Schalter und Prompt in den Kopf; alles andere im Kopf bleibt unberuehrt.
+  // Neue Zeilen kommen vor den ersten ###-Abschnitt (z. B. "### An Claude"), damit sie nicht in einen Abschnitt rutschen.
   function kopfSchreiben(kopf, cfg) {
+    const vorher = kopfLesen(kopf);
     let z = kopf.slice();
     if (!z.some(s => s.trim())) z = [];
     const titel = (cfg.titel || "").trim() || "Board";
@@ -78,20 +168,25 @@ const BM = (() => {
       while (ende < z.length && !/^#{1,6}\s/.test(z[ende])) ende++;
       z.splice(pi, ende - pi);
     }
-    const setze = (wort, werte) => {
-      const i = z.findIndex(s => { const m = CFG_RE.exec(s); return m && m[2].toLowerCase() === wort.toLowerCase(); });
-      const zeile = wort + ": " + werte.join(", ");
-      if (i >= 0) { const m = CFG_RE.exec(z[i]); z[i] = (m[1] ? "> " : "") + zeile; return; }
-      if (!werte.length) return;
-      let pos = z.length;
+    const istCfg = (s) => CFG_RE.test(s) || CL_RE.test(s);
+    const setze = (re, wort, wert, neuNoetig, passt) => {
+      const i = z.findIndex(s => { const m = re.exec(s); return m && m[2].toLowerCase() === wort.toLowerCase() && (!passt || passt(m[3].replace(/\*\*/g, "").trim())); });
+      const zeile = wort + ": " + wert;
+      if (i >= 0) { const m = re.exec(z[i]); z[i] = (m[1] ? "> " : "") + zeile; return; }
+      if (!neuNoetig) return;
+      const abschnitt = z.findIndex(s => /^###\s/.test(s));
+      let pos = abschnitt >= 0 ? abschnitt : z.length;
       while (pos > 0 && !z[pos - 1].trim()) pos--;
-      if (pos > 0 && !CFG_RE.test(z[pos - 1])) { z.splice(pos, 0, ""); pos++; }
+      if (pos > 0 && !istCfg(z[pos - 1])) { z.splice(pos, 0, ""); pos++; }
       z.splice(pos, 0, zeile);
+      if (pos + 1 < z.length && z[pos + 1].trim()) z.splice(pos + 1, 0, "");
     };
-    setze("Namen", cfg.namen || []);
-    setze("Projekte", cfg.projekte || []);
+    setze(CFG_RE, "Namen", (cfg.namen || []).join(", "), (cfg.namen || []).length > 0);
+    setze(CFG_RE, "Projekte", (cfg.projekte || []).join(", "), (cfg.projekte || []).length > 0);
+    if (cfg.claude !== undefined && !!cfg.claude !== vorher.claude) setze(CL_RE, "Claude", cfg.claude ? "an" : "aus", true, w => CL_WERT_RE.test(w));
+    if (cfg.claude && (einzeilig(cfg.inbox) || "inbox") !== vorher.inbox) setze(CL_RE, "Inbox", einzeilig(cfg.inbox) || "inbox", true);
     while (z.length && !z[z.length - 1].trim()) z.pop();
-    const prompt = (cfg.prompt || "").replace(/\r/g, "").split("\n")
+    const prompt = (cfg.prompt || "").split(UMBRUCH_RE)
       .map(s => /^#/.test(s) || ZEILE_RE.test(s) ? " " + s : s);   // darf keinen Abschnitt und keine Aufgabe erzeugen
     while (prompt.length && !prompt[prompt.length - 1].trim()) prompt.pop();
     if (prompt.some(s => s.trim())) z.push("", "### Prompt", ...prompt);
@@ -253,7 +348,7 @@ const BM = (() => {
   function mehrzeilig(s) {
     return String(s || "").replace(/\r/g, "").split("\n").map(z => z.split(/\s+/).filter(Boolean).join(" ")).filter(Boolean).join("\n");
   }
-  function einzeilig(s) { return String(s || "").split(/\s+/).filter(Boolean).join(" "); }
+  function einzeilig(s) { return String(s || "").split(/[\s\x1c-\x1e\x85]+/).filter(Boolean).join(" "); }
 
   function neueDatei(cfg) {
     const kopf = kopfSchreiben([
@@ -268,6 +363,7 @@ const BM = (() => {
   }
 
   return {STATUS, KEIN_FOKUS, ZU, AUFWAND, FOKUS_MAX, TITEL_LANG, ISO_RE, ALLE_RE, PROJ_RE, leer, lesen, schreiben, zeileAus,
-    normalisieren, naechstes, tageBis, abhaken, verschieben, titelKurz, mehrzeilig, einzeilig, kopfLesen, kopfSchreiben, neueDatei, liste};
+    normalisieren, naechstes, tageBis, abhaken, verschieben, titelKurz, mehrzeilig, einzeilig, kopfLesen, kopfSchreiben, neueDatei, liste,
+    kurzLesen, kurzNeu, kurzGelesen, KURZ_ID_RE};
 })();
 if (typeof module !== "undefined") module.exports = BM;

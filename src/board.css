@@ -28,6 +28,12 @@ header { position: sticky; top: 0; background: var(--bg); padding: 10px 12px 8px
 .sbtn.warn { border-color: var(--gelb); color: var(--gelb); font-weight: 600; }
 .sbtn.warn::before { content: "● "; }
 .sbtn.fehler { border-color: var(--rot); color: var(--rot); font-weight: 600; }
+.cbtn { border: 1px solid var(--rand); background: var(--karte); color: var(--leise); border-radius: 999px; padding: 5px 10px;
+  font-size: 12.5px; cursor: pointer; white-space: nowrap; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+.cbtn::before { content: "○ "; }
+.cbtn.on { color: var(--text); }
+.cbtn.on::before { content: "● "; color: var(--gruen); }
+.cbtn.neu { border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
 .suche { width: 100%; order: 9; font: inherit; font-size: 16px; padding: 7px 11px; border: 1px solid var(--rand);
   border-radius: 10px; background: var(--karte); color: var(--text); }
 .suche:focus { outline: 2px solid var(--akzent); outline-offset: -1px; }
@@ -237,3 +243,22 @@ pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--f
 .doku p, .doku li { font-size: 15px; line-height: 1.5; }
 .doku li { margin-bottom: 6px; }
 .doku pre.prompt { max-height: none; }
+/* Claude-Anbindung */
+.banner.claude { border-color: var(--akzent); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.banner.claude .btext { flex: 1 1 100%; overflow-wrap: anywhere; }
+.cstatus { display: flex; align-items: center; gap: 7px; font-size: 13.5px; margin: 8px 0; }
+.cpunkt { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--leise); flex: none; }
+.cpunkt.on { background: var(--gruen); border-color: var(--gruen); }
+.hilfe.grenze { border-left: 3px solid var(--gelb); padding-left: 8px; }
+.ablage { border: 2px dashed var(--rand); border-radius: 10px; padding: 14px; font-size: 13.5px; color: var(--leise); cursor: pointer; margin-bottom: 8px; }
+.ablage b { color: var(--text); }
+.ablage.drueber, .ablage:focus { border-color: var(--akzent); outline: none; }
+.kurzliste { display: flex; flex-direction: column; gap: 8px; }
+.kurz { border: 1px solid var(--rand); border-radius: 10px; padding: 8px 10px; background: var(--karte); }
+.kurz.ungelesen { border-color: var(--akzent); }
+.kurz .kmeta { font-size: 12px; color: var(--leise); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.kurz .kmeta.warte { margin-top: 4px; font-style: italic; }
+.kurz .ktxt { font-size: 14.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
+.kurz .antwort { margin-top: 6px; padding-left: 10px; border-left: 3px solid var(--gruen); }
+.kurz .mreihe { margin-top: 6px; }
+.klink { border: 0; background: none; color: var(--akzent); padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }

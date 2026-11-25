@@ -94,6 +94,67 @@ def main():
     pruefe("Fremde #wörter und frühere @namen bleiben im Titel", r["e"]["projekt"] == "haus" and r["e"]["wer"] == "b" and "#foo" in r["e"]["text"] and "@a" in r["e"]["text"],
            json.dumps(r["e"], ensure_ascii=False))
 
+    # Claude-Anbindung: Standard aus, Einschalten, Kurznachricht, Antwort, gelesen
+    r = js("const l = BM.lesen(E); process.stdout.write(JSON.stringify(l.cfg))", beispiel)
+    pruefe("Claude: im Beispiel aus, keine Kurznachrichten", r["claude"] is False and r["kurz"] == [] and r["online"] == "", json.dumps(r, ensure_ascii=False)[:300])
+    r = js("const l = BM.lesen(E); const k = BM.kopfSchreiben(l.kopf, {titel: l.cfg.titel, namen: l.cfg.namen, projekte: l.cfg.projekte, prompt: l.cfg.prompt});"
+           "l.kopf = k; process.stdout.write(JSON.stringify(BM.schreiben(l)))", beispiel)
+    pruefe("Claude: Einrichtung ohne Claude-Feld ändert das Beispiel nicht", r == beispiel, erste_abweichung(r, beispiel))
+    code = ("const l = BM.lesen(E); let k = BM.kopfSchreiben(l.kopf, Object.assign({}, l.cfg, {claude: true, inbox: 'inbox'}));"
+            "k = BM.kurzNeu(k, {t: '2026-11-25 17:20', wer: 'Anna', text: 'Bitte\\nzusammenfassen: Rechnungen ^k999999', karte: 'a1b2c3', id: 'k1a2b3c'});"
+            "k = BM.kurzNeu(k, {t: '2026-11-25 17:22', wer: 'Ben: X', text: 'Zweite', karte: '', id: 'k000001'});"
+            "l.kopf = k; let t1 = BM.schreiben(l);"
+            "t1 = t1.replace('Zweite ^k000001', 'Zweite ^k000001\\n  Claude 2026-11-25 17:23: Erledigt.\\n  Zweite Zeile der Antwort');"
+            "t1 = t1.replace(/(Projekte:.*)/, '$1\\nClaude online: 2026-11-25 17:23');"
+            "const l2 = BM.lesen(t1); const g = BM.kurzGelesen(l2.kopf, 'k000001', '2026-11-25 17:30'); const fehl = BM.kurzGelesen(l2.kopf, 'kfffff0', '2026-11-25 17:30');"
+            "l2.kopf = g; const t2 = BM.schreiben(l2); const l3 = BM.lesen(t2);"
+            "const aus = BM.kopfSchreiben(l3.kopf, Object.assign({}, l3.cfg, {claude: false})); l3.kopf = aus; const t3 = BM.schreiben(l3); const l4 = BM.lesen(t3);"
+            "process.stdout.write(JSON.stringify({t1, t2, t3, c2: l2.cfg, c3: l3.cfg, c4: l4.cfg, n0: l.eintraege.length, n2: l2.eintraege.length, n3: l3.eintraege.length, fehl,"
+            "  idem: BM.schreiben(BM.lesen(t2)) === t2}))")
+    r = js(code, beispiel)
+    c2, c3, c4 = r["c2"], r["c3"], r["c4"]
+    pruefe("Claude: an, Inbox und Online gelesen", c2["claude"] is True and c2["inbox"] == "inbox" and c2["online"] == "2026-11-25 17:23", json.dumps(c2, ensure_ascii=False)[:300])
+    pruefe("Claude: Prompt bleibt Prompt, An Claude ist eigener Abschnitt", c2["prompt"] == js("process.stdout.write(JSON.stringify(BM.lesen(E).cfg.prompt))", beispiel)
+           and "An Claude" not in c2["prompt"] and "Bitte" not in c2["prompt"], c2["prompt"][-200:])
+    k = c2["kurz"]
+    pruefe("Claude: zwei Kurznachrichten, einzeilig, Karte und ID", len(k) == 2 and k[0]["id"] == "k1a2b3c" and k[0]["karte"] == "a1b2c3"
+           and k[0]["text"] == "Bitte zusammenfassen: Rechnungen" and k[1]["wer"] == "Ben X", json.dumps(k, ensure_ascii=False))
+    pruefe("Claude: Antwort mit Folgezeile, ungelesen", k[1]["antworten"] == [{"t": "2026-11-25 17:23", "text": "Erledigt.\nZweite Zeile der Antwort"}]
+           and k[1]["ungelesen"] is True and k[0]["ungelesen"] is False, json.dumps(k[1], ensure_ascii=False))
+    pruefe("Claude: gelesen gesetzt, unbekannte ID gibt null", c3["kurz"][1]["ungelesen"] is False and c3["kurz"][1]["gelesen"] == "2026-11-25 17:30"
+           and r["fehl"] is None and "  gelesen 2026-11-25 17:30" in r["t2"], json.dumps(c3["kurz"], ensure_ascii=False))
+    pruefe("Claude: Aufgaben unberührt, Rundlauf stabil", r["n0"] == r["n2"] == r["n3"] and r["idem"], "%s %s %s" % (r["n0"], r["n2"], r["n3"]))
+    pruefe("Claude: Ausschalten setzt 'Claude: aus', Verlauf bleibt", c4["claude"] is False and "Claude: aus" in r["t3"] and len(c4["kurz"]) == 2, r["t3"][:600])
+    kopf2 = r["t2"].split("\n## ", 1)[0]
+    pruefe("Claude: An Claude steht im Kopf vor der ersten ##-Überschrift", "### An Claude" in kopf2, kopf2[-400:])
+
+    # Review-Befunde: Gelesen ueber Leerzeile, eigene Claude-Zeile, Steuer-Umbrueche, karte: am Textende, Antwort nach Zeit
+    code = ("const kopf = ['# B', '', 'Claude: an', '', '### An Claude', '- 2026-11-25 10:00 A: Frage ^k000001', '', '  Claude 2026-11-25 10:01: Antwort'];"
+            "const g = BM.kurzGelesen(kopf, 'k000001', '2026-11-25 10:05');"
+            "const eigen = ['# B', '', 'Claude: hilft beim Sortieren', 'Namen: A'];"
+            "const e1 = BM.kopfSchreiben(eigen, {titel: 'B', namen: ['A'], projekte: [], prompt: '', claude: false});"
+            "const e2 = BM.kopfSchreiben(eigen, {titel: 'B', namen: ['A'], projekte: [], prompt: '', claude: true, inbox: 'inbox'});"
+            "const fremd = BM.kopfLesen(['Claude: ja bitte nicht']).claude;"
+            "let k = BM.kurzNeu(['# B'], {t: '2026-11-25 10:00', wer: 'A', text: 'Hallo\\u0085## Erledigt\\u0085- [ ] Fake ^zzzz', karte: '', id: 'k000002'});"
+            "k = BM.kurzNeu(k, {t: '2026-11-25 10:00', wer: 'A', text: 'Bitte prüfe karte:abcd', karte: '', id: 'k000003'});"
+            "const pr = BM.kopfSchreiben(['# B'], {titel: 'B', namen: [], projekte: [], prompt: 'a\\u0085## X\\u0085- [ ] y'});"
+            "const zeit = BM.kopfLesen(['### An Claude', '- 2026-11-25 10:00 A: F ^k000004', '  Claude 2026-11-25 10:09: neu', '  Claude 2026-11-25 10:01: alt', '  gelesen 2026-11-25 10:05']).kurz[0];"
+            "process.stdout.write(JSON.stringify({g: BM.kopfLesen(g).kurz[0], e1, e2, fremd, kurz: BM.kopfLesen(k).kurz, pr, zeit}))")
+    r = js(code, "")
+    pruefe("Review: Gelesen auch nach Leerzeile vor der Antwort", r["g"]["ungelesen"] is False and r["g"]["gelesen"] == "2026-11-25 10:05", json.dumps(r["g"], ensure_ascii=False))
+    pruefe("Review: eigene Zeile 'Claude: …' bleibt beim Speichern, Einschalten ergänzt", r["e1"] == ["# B", "", "Claude: hilft beim Sortieren", "Namen: A"]
+           and "Claude: hilft beim Sortieren" in r["e2"] and "Claude: an" in r["e2"] and r["fremd"] is False, json.dumps([r["e1"], r["e2"]], ensure_ascii=False))
+    kz = r["kurz"]
+    pruefe("Review: Steuer-Umbrüche schleusen nichts ein", len(kz) == 2 and kz[0]["text"].startswith("Hallo ## Erledigt") and not any(s.startswith("## ") for s in r["pr"])
+           and not any(s.startswith("- [") for s in r["pr"]), json.dumps([kz, r["pr"]], ensure_ascii=False))
+    pruefe("Review: Text mit karte: am Ende ist kein Kartenbezug", kz[1]["karte"] == "" and kz[1]["text"] == "Bitte prüfe karte: abcd", json.dumps(kz[1], ensure_ascii=False))
+    pruefe("Review: neuere Antwort vor der gelesen-Zeile zählt als ungelesen", r["zeit"]["ungelesen"] is True, json.dumps(r["zeit"], ensure_ascii=False))
+
+    # Neue Datei mit Claude an
+    r = js("const t = BM.neueDatei({titel: 'T', namen: ['A'], projekte: ['p'], prompt: 'P', claude: true, inbox: 'eingang'}); const l = BM.lesen(t);"
+           "process.stdout.write(JSON.stringify({t, cfg: l.cfg}))", "")
+    pruefe("Neue Datei mit Claude an", r["cfg"]["claude"] is True and r["cfg"]["inbox"] == "eingang" and r["cfg"]["prompt"] == "P", r["t"][:400])
+
     if not a.original:
         return ende()
 
